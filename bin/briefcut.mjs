@@ -85,7 +85,7 @@ async function main() {
     ensureDir(path.join(dir, 'out'));
     fs.copyFileSync(path.join(ROOT, 'src', 'presets', 'BRIEF_TEMPLATE.md'), path.join(dir, 'BRIEF.md'));
     fs.writeFileSync(path.join(dir, '.gitignore'), '.env*\n!.env.example\nout/\naudio/\nclips/*.mp4\nclips/_takes/\nclips/_rejected/\n');
-    fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(dir, '.env.example'));
+    fs.copyFileSync(path.join(ROOT, 'src', 'presets', 'env.example'), path.join(dir, '.env.example'));
     console.log(`new film folder: ${dir}\nnext: edit BRIEF.md, then "briefcut prompts ${pos[0]}" (handoff) or "briefcut generate ${pos[0]}" (API provider)`);
     return;
   }

@@ -9,7 +9,7 @@ effects are assembled by deterministic code into a frame-synced, loudness-normal
 QA report. Coding and browser agents do the parts code can't: producing clips in a video tool,
 and looking at the pictures.
 
-![license: MIT](https://img.shields.io/badge/license-MIT-blue) ![node: 22+](https://img.shields.io/badge/node-22%2B-339933) ![runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
+[![npm](https://img.shields.io/npm/v/briefcut)](https://www.npmjs.com/package/briefcut) ![license: MIT](https://img.shields.io/badge/license-MIT-blue) ![node: 22+](https://img.shields.io/badge/node-22%2B-339933)
 
 I designed this pipeline (the brief format, the edit, voice and sync rules, the QA checks and the
 agent workflow) and it has rendered every film of my kids' learning channel and several client
@@ -147,7 +147,7 @@ where the sound is; this sheet says the picture agrees.
 npx briefcut demo
 ```
 
-Before the npm release, from a clone:
+Or from a clone:
 
 ```bash
 git clone https://github.com/cagrikacmaz/briefcut && cd briefcut && node bin/briefcut.mjs demo

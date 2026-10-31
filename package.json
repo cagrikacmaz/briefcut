@@ -10,11 +10,12 @@
     "bin/",
     "src/",
     "playbooks/",
-    "examples/hello-short/",
     "docs/",
+    "examples/hello-short/",
     "AGENTS.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node --test --test-concurrency=1 \"test/*.test.mjs\"",
@@ -27,16 +28,22 @@
     "ai-video",
     "video-generation",
     "elevenlabs",
+    "veo",
+    "seedance",
+    "higgsfield",
     "ffmpeg",
     "agents",
-    "pipeline",
-    "edit",
-    "loudness"
+    "automation",
+    "cli"
   ],
   "author": "Çağrı Kaçmaz",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cagrikacmaz/briefcut.git"
+  },
+  "homepage": "https://github.com/cagrikacmaz/briefcut#readme",
+  "bugs": {
+    "url": "https://github.com/cagrikacmaz/briefcut/issues"
   }
 }
