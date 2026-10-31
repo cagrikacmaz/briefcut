@@ -1,4 +1,4 @@
-https://github.com/user-attachments/assets/aa6fd615-361e-4ed7-beef-1589a508f583
+https://github.com/user-attachments/assets/5b25ed60-a413-474a-99e2-da2e01ded3ba
 
 <p align="center"><sub>Midnight, 15.5 s with sound, rendered by briefcut from four generated clips and a markdown brief. No player? <a href="media/midnight-preview.gif">Silent GIF of the last 7.75 s</a> or <a href="media/midnight-preview.mp4">the mp4</a>.</sub></p>
 
@@ -54,8 +54,8 @@ says so. Details: [docs/RULES.md](docs/RULES.md).
 
 Midnight is a 15.5 s vertical film about a clockmaker's workshop at night: hammer taps on brass,
 a gear seating, a cuckoo, and every clock striking midnight. The full build log is in
-[`examples/midnight/`](examples/midnight/): brief, revision, take notes, cue sheet, strips,
-sheets, report and every decision. Clips, audio and masters are not in git; the masters are
+[`examples/midnight/`](examples/midnight/): brief, two revisions, take notes, cue sheet, strips,
+sheets, voice audition, reports and every decision. Clips, audio and masters are not in git; the masters are
 attached to the v0.1.0 release.
 
 1. **I wrote the film idea, the rules, the brief format and the QA checks.** The scene prompts
@@ -82,12 +82,12 @@ attached to the v0.1.0 release.
      about 0.43 USD (2,174 credits). ElevenLabs made 16 generations in 41 s: 1 narrator line
      (18 characters, voice "George", the brief's first candidate), 12 sound-effect variants,
      2 music takes (take 1 kept: steadiest tempo, 120.00 BPM, local spread 0.04 BPM against 0.15)
-     and 1 ambience bed. Every later render reused the cache; the revision made no paid call.
+     and 1 ambience bed. Every later render reused the cache; the first revision made no paid call.
    - **Sync.** The first render put a two-part door clack, a cuckoo call and a wing flutter
      1.2-2.1 frames off, which led to placing effects by their attack point. Since then every
      sound measures 0.00 frames from its target in the master (tolerance ±1), and every row of
      `sync_check.jpg` was checked by eye.
-4. **I reviewed the result and asked for one revision** (v2: ending energy, a tighter cut, social
+4. **I reviewed the result and asked for a revision** (v2: ending energy, a tighter cut, social
    loudness). In v1 the last seconds before the end card fell to -42.57 LUFS momentary, 35 LU
    under the strike; S2 and S4 held near-static frames; the end card's second line was small on
    a phone; LinkedIn and X do not normalize loudness. The revision is one file,
@@ -104,30 +104,42 @@ attached to the v0.1.0 release.
    masters overshot the true-peak limit after AAC encoding, and one render that read -1.0 dBTP
    had a sample peak of -0.97 dBFS; the true-peak rule now counts the sample peak, and the social
    masters settled at a -4.5 dBTP limiter ceiling.
-   - **Runtime.** Audio 41 s (v1). The v2 cut with all five exports took 64 s; a regression
-     re-render in a mirror folder was frame-identical (372 of 372 frames) and bit-identical in
-     audio.
+5. **I reviewed v2 and asked for a deeper, clearer narrator** (v3, audio only, picture as v2):
+   [`FIX02.md`](examples/midnight/FIX02.md). The narrator is chosen by audition: the line
+   generated with four voices (4 lines, 72 characters, about 0.01 USD), each measured for its
+   fundamental and spectral centroid; Adam is lowest on both (90.1 Hz, 1424 Hz), see
+   [`out/AUDITION.md`](examples/midnight/out/AUDITION.md). The line is at -3 dBFS peak with a +2 dB
+   low shelf at 150 Hz, and the strike is ducked 6 dB under it (150 ms attack, 600 ms release).
+   With that alone the line measured 1.09 dB under the bell in the speech band (300-3000 Hz, what
+   a phone speaker reproduces), so the strike is ducked 18 dB more in that band only, with a fast
+   attack and release, and the narrator is compressed 6:1 so the end of the line holds up. Now the
+   line is 6.44 dB over the bell in that band and the ending rule still holds (7.15 LU). Every
+   sound and `sync_check.jpg` are unchanged from v2.
+   - **Runtime.** Audio 41 s (v1) and 4 audition lines (v3). A v3 cut with all five exports takes
+     55 s; a regression re-render in a mirror folder was frame-identical (372 of 372 frames) and
+     bit-identical in audio.
 
-QA of v2, from [`out/REPORT.md`](examples/midnight/out/REPORT.md):
+QA of v3, from [`out/REPORT.md`](examples/midnight/out/REPORT.md):
 
 | # | Check | Result | Detail |
 |---|---|---|---|
 | 1 | Duration 15.5-16.5 s | PASS | 15.500 s, 372 frames |
-| 2 | Master: -14 LUFS ±0.5, true peak ≤ -1 dBTP, no clipping | PASS | -13.90 LUFS, -1.40 dBTP, sample peak -1.40 dBFS |
+| 2 | Master: -14 LUFS ±0.5, true peak ≤ -1 dBTP, no clipping | PASS | -14.00 LUFS, -1.40 dBTP, sample peak -1.43 dBFS |
 | 3 | Every event and cue placed or logged | PASS | 16 placed, 0 dropped, 1 event flagged not found |
 | 4 | Every sound within ±1 frame, measured on the master | PASS | worst 0.00 frames over 16 sounds |
 | 5 | Music silent after the hard stop | PASS | digital silence from 9.520 s |
-| 6 | The midnight strike is the loudest moment (400 ms momentary) | PASS | -8.33 LUFS at 9.80 s, strike at 9.50 s |
-| 7 | `MIDNIGHT_social_v2.mp4`: -10 LUFS ±0.5, true peak ≤ -1 dBTP, no clipping | PASS | -10.10 LUFS, -1.60 dBTP, sample peak -1.56 dBFS |
-| 8 | `MIDNIGHT_16x9_social_v2.mp4`: the same | PASS | -10.10 LUFS, -1.60 dBTP, sample peak -1.56 dBFS |
-| 9 | Last 3 s before the end card within 8 LU of the strike | PASS | lowest -15.38 LUFS at 12.20 s, 7.05 LU under the strike |
-| 10 | First sound within 0.5 s | PASS | first tap at 0.042 s |
-| 11 | First frame not black, last frame is the end card | PASS | |
-| 12 | No audio from the source clips | PASS | |
-| 13 | Hard cuts only, no retiming | PASS | render graph checked |
-| 14 | Min shot 2.0 s | PASS | shortest 2.000 s |
-| 15 | Cuts on the music grid | PASS | worst 0.14 ms off a beat |
-| 16 | No silence holes | PASS | |
+| 6 | The midnight strike is the loudest moment (400 ms momentary) | PASS | -8.94 LUFS at 9.80 s, strike at 9.50 s |
+| 7 | `MIDNIGHT_social_v3.mp4`: -10 LUFS ±0.5, true peak ≤ -1 dBTP, no clipping | PASS | -10.00 LUFS, -1.10 dBTP, sample peak -1.12 dBFS |
+| 8 | `MIDNIGHT_16x9_social_v3.mp4`: the same | PASS | -10.00 LUFS, -1.10 dBTP, sample peak -1.12 dBFS |
+| 9 | The narrator reads over the strike: speech band 300-3000 Hz at least 6 dB above it | PASS | +6.44 dB in the line's window |
+| 10 | Last 3 s before the end card within 8 LU of the strike | PASS | lowest -16.09 LUFS at 12.10 s, 7.15 LU under the strike |
+| 11 | First sound within 0.5 s | PASS | first tap at 0.042 s |
+| 12 | First frame not black, last frame is the end card | PASS | |
+| 13 | No audio from the source clips | PASS | |
+| 14 | Hard cuts only, no retiming | PASS | render graph checked |
+| 15 | Min shot 2.0 s | PASS | shortest 2.000 s |
+| 16 | Cuts on the music grid | PASS | worst 0.14 ms off a beat |
+| 17 | No silence holes | PASS | |
 
 ## What `sync_check.jpg` proves
 
@@ -278,7 +290,7 @@ instructions for an agent that you supervise, in your own account, at your own d
 
 ## Lessons
 
-[docs/LESSONS.md](docs/LESSONS.md) lists 69 failure modes my production runs hit, each as symptom,
+[docs/LESSONS.md](docs/LESSONS.md) lists 70 failure modes my production runs hit, each as symptom,
 cause, rule and check. Five of them:
 
 - Voices landed 0.1-0.6 s late -> generated audio carries leading silence; place the onset, never the file start.
@@ -300,12 +312,20 @@ cause, rule and check. Five of them:
 npm test
 ```
 
-55 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
+60 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
 beat snap, voice rules, onset and transient trims, loudness math, wildcard events, the music hard
-stop, held decay and effect ducking, stills as held shots, song-block bit identity, provider
+stop, held decay, effect and speech-band ducking, voice audition, stills as held shots, song-block bit identity, provider
 contracts, a golden demo render (every sound within ±1 frame of its known flash, the master at
 -14 ±0.5 LUFS and a social pair at -10 ±0.5 LUFS, true peak ≤ -1 dBTP), and a privacy scan for
 names, local paths, anything that looks like a key, and assistant or model brands. CI runs them on Linux, Windows and macOS.
+
+## Acknowledgements
+
+Parts of this pipeline were developed during R&D work with [Selfmades](https://selfmades.co), where
+I serve as Strategic Partner and Executive Advisor, and tested in the Selfmades Academy content
+program. Thanks to the team there.
+
+If briefcut saves you time, you can support the work at buymeacoffee.com/cagrikacmaz.
 
 ## License
 
