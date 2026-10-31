@@ -12,7 +12,24 @@ const SKIP_DIRS = new Set(['.git', 'node_modules', 'briefcut-demo']);
 const TEXT = /\.(mjs|js|json|md|txt|yml|yaml|example|gitignore)$|^[^.]+$/i;
 
 // Stored reversed so this file does not itself contain the names it forbids.
-const NAMES = ['obmap', 'aryak', 'har-iak', 'har-eyk', 'har-ee-hak', 'aryk', 'imay'].map((s) => s.split('').reverse().join(''));
+const rev = (s) => s.split('').reverse().join('');
+const NAMES = ['obmap', 'aryak', 'har-iak', 'har-eyk', 'har-ee-hak', 'aryk', 'imay'].map(rev);
+// Assistant and model brands: the repository credits no tool for authorship. Provider names that
+// are part of the pipeline (Google Flow, Veo, ElevenLabs, Higgsfield, the Gemini API, fal) are
+// integrations and stay allowed; the brand of an agent is not.
+const BRANDS = [
+  new RegExp(`\\b${rev('edualc')}\\b`, 'i'),
+  new RegExp(`\\b${rev('ciporhtna')}\\b`, 'i'),
+  new RegExp(`\\b${rev('supo')}\\b`, 'i'),
+  new RegExp(`\\b${rev('tennos')}\\b`, 'i'),
+  new RegExp(`\\b(?:tahc)?${rev('tpg')}(?:\\b|-?\\d)`.replace('tahc', rev('tahc')), 'i'),
+  new RegExp(`\\b${rev('xedoc')}\\b`, 'i'),
+  new RegExp(rev('ytivargitna'), 'i'),
+  new RegExp(`\\b${rev('inimeg')}\\s+(?:in|cli|code|agent)\\b`, 'i'),
+];
+// The one allowed occurrence: the credits line at the end of the Midnight example's intro.
+const CREDITS_FILE = 'examples/midnight/README.md';
+const CREDITS = `Clips: Google Flow (Veo 3.1 Quality), generated and downloaded by a browser agent (${rev('emorhC ni edualC')}) in my own session. Pipeline run: briefcut, driven by a coding agent (${rev('edoC edualC')}). Brief, rules, QA criteria and review: me.`;
 const KEYS = [
   // The prefix is assembled so a history scan for key material does not match this line.
   { name: 'ElevenLabs key', re: new RegExp(`\\b${'s'}k_[a-f0-9]{24,}`, 'i') },
@@ -50,6 +67,25 @@ test('no private names, local paths or key-like strings in the repository', () =
     if (rel !== 'test/privacy.test.mjs') for (const p of PATHS) if (p.test(text)) hits.push(`${rel}: a local path (${p})`);
   }
   assert.deepEqual(hits, []);
+});
+
+test('no assistant or model brand anywhere, except the one credits line', () => {
+  const hits = [];
+  let credited = 0;
+  for (const f of files(ROOT)) {
+    const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+    let text = fs.readFileSync(f, 'utf8');
+    if (rel === CREDITS_FILE) {
+      const lines = text.split(/\r?\n/);
+      credited = lines.filter((l) => l === CREDITS).length;
+      text = lines.filter((l) => l !== CREDITS).join('\n');
+    }
+    text.split(/\r?\n/).forEach((line, i) => {
+      for (const re of BRANDS) if (re.test(line)) hits.push(`${rel}:${i + 1}: ${line.trim().slice(0, 100)}`);
+    });
+  }
+  assert.deepEqual(hits, []);
+  assert.equal(credited, 1, `the credits line appears exactly once, as its own line, in ${CREDITS_FILE}`);
 });
 
 test('only .env.example is allowed among env files', () => {

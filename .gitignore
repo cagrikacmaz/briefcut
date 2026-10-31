@@ -2,7 +2,7 @@
 .env*
 !.env.example
 
-# Agent and session state
+# Local notes
 HANDOFF.md
 
 # Renders and generated media
