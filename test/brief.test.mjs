@@ -102,7 +102,7 @@ test('revision options: row gain, decay hold, effect duck, end-card size, tail Q
     .replace(/## QA\r?\n/, '## QA\n12. The last 3 s before the end card stay within 8 LU of the boom (momentary loudness).\n');
   const cfg = parseBrief(text, 'BRIEF.md', nullLog());
   assert.deepEqual(cfg.levels.sfxHold.boom, { rate: 1.2, from: 0.5, maxLift: 36 });
-  assert.equal(cfg.levels.sfxDuck.boom, 4);
+  assert.deepEqual(cfg.levels.sfxDuck.boom, { db: 4, attackMs: null, releaseMs: null, holdMs: null, keyDb: null });
   assert.deepEqual(cfg.qa.tail, { seconds: 3, lu: 8, sfx: 'boom' });
   const gainText = fixture
     .replace(/\| At event \| Offset \|\r?\n\|---\|---\|---\|---\|---\|---\|/, '| At event | Offset | Gain |\n|---|---|---|---|---|---|---|')

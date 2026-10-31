@@ -2,6 +2,7 @@
 // check that fails stays FAIL in the report.
 import { ffmpeg, momentaryLoudness } from './ff.mjs';
 import { SR, CH, db } from './util.mjs';
+import { bandPass } from './mix.mjs';
 
 // Stretches below floorDb longer than minSeconds (silencedetect on the file).
 export async function silences(file, floorDb, minSeconds, duration) {
@@ -121,3 +122,22 @@ export function checkSongBlock(premix, stems, songPcm, startSample, blockSamples
 }
 
 export const pass = (b) => (b == null ? 'n/a' : b ? 'PASS' : 'FAIL');
+
+// "The line reads over the strike": RMS of the voice and of the effect, each band-limited to the
+// speech band, over the line's window, and their ratio in dB (voice minus effect).
+export function speechBandRatio(voicePcm, effectPcm, from, to, { lo = 300, hi = 3000 } = {}) {
+  const a = Math.max(0, Math.round(from * SR));
+  const b = Math.max(a + 1, Math.round(to * SR));
+  const pad = Math.round(0.1 * SR);
+  const s0 = Math.max(0, a - pad);
+  const cut = (p) => bandPass(p.subarray(s0 * CH, Math.min(p.length / CH, b) * CH), lo, hi);
+  const rmsDb = (p) => {
+    let s = 0;
+    const i0 = (a - s0) * CH;
+    for (let i = i0; i < p.length; i++) s += p[i] * p[i];
+    return 10 * Math.log10(s / Math.max(1, p.length - i0) + 1e-20);
+  };
+  const voiceDb = rmsDb(cut(voicePcm));
+  const effectDb = effectPcm ? rmsDb(cut(effectPcm)) : -Infinity;
+  return { voiceDb, effectDb, ratioDb: voiceDb - effectDb, from, to, lo, hi };
+}

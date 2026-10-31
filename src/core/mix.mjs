@@ -69,7 +69,7 @@ export function layMusic(total, pcm, { offsetSamples = 0, beatOneAt = 0, stopAt 
   return { pcm: out, playing: [startTl, end], looped };
 }
 
-export function renderMix({ totalSamples, voices = [], hits = [], music = null, ambience = null, levels, log }) {
+export function renderMix({ totalSamples, voices = [], hits = [], music = null, ambience = null, levels, log, stemsFor = [] }) {
   const A2 = new Float32Array(totalSamples * CH);
   const A3 = new Float32Array(totalSamples * CH);
   const A4 = new Float32Array(totalSamples * CH);
@@ -81,23 +81,48 @@ export function renderMix({ totalSamples, voices = [], hits = [], music = null, 
   }
   let duck = null;
   const duckCurve = () => (duck ??= keyedDuck(totalSamples, key, levels));
-  // Effects with duckDb are ducked under the voice bus with the music's key and timing; the
-  // duck only lowers the level, so a ducked hit still starts on its sample.
+  // Effects with a duck ({ db, attackMs, releaseMs }, or duckDb) are ducked under the voice bus,
+  // keyed like the music, with their own timing when given; the duck only lowers the level, so a
+  // ducked hit still starts on its sample. `stemsFor` names effects whose contribution, as mixed,
+  // is returned in sfxStems (for QA).
+  const want = new Set(stemsFor);
+  const sfxStems = {};
+  const stemOf = (name) => (sfxStems[name] ??= new Float32Array(totalSamples * CH));
   const ducked = new Map();
   for (const h of hits) {
-    if (!h.duckDb) {
+    const d = h.duck || (h.duckDb ? { db: h.duckDb } : null);
+    if (!d) {
       addAt(A3, h.pcm, h.startSample, undb(h.gain || 0));
+      if (want.has(h.sfxName)) addAt(stemOf(h.sfxName), h.pcm, h.startSample, undb(h.gain || 0));
       continue;
     }
-    const bus = ducked.get(h.duckDb) || new Float32Array(totalSamples * CH);
-    addAt(bus, h.pcm, h.startSample, undb(h.gain || 0));
-    ducked.set(h.duckDb, bus);
+    const k = `${d.db}|${d.attackMs ?? ''}|${d.releaseMs ?? ''}|${d.band ? `${d.band.extraDb}@${d.band.lo}-${d.band.hi}` : ''}`;
+    const g = ducked.get(k) || { d, bus: new Float32Array(totalSamples * CH), names: new Map() };
+    addAt(g.bus, h.pcm, h.startSample, undb(h.gain || 0));
+    if (want.has(h.sfxName)) {
+      if (!g.names.has(h.sfxName)) g.names.set(h.sfxName, new Float32Array(totalSamples * CH));
+      addAt(g.names.get(h.sfxName), h.pcm, h.startSample, undb(h.gain || 0));
+    }
+    ducked.set(k, g);
   }
-  for (const [depthDb, bus] of ducked) {
-    const d = duckCurve();
+  for (const { d, bus, names } of ducked.values()) {
+    // Own timing, hold and key threshold when the brief gives them; else the music duck's.
+    const timing = { ...(d.attackMs != null ? { attackMs: d.attackMs } : {}), ...(d.releaseMs != null ? { releaseMs: d.releaseMs } : {}), ...(d.holdMs != null ? { holdMs: d.holdMs } : {}), ...(d.keyDb != null ? { duckKeyDb: d.keyDb } : {}) };
+    const curve = Object.keys(timing).length ? keyedDuck(totalSamples, key, { ...levels, ...timing }) : duckCurve();
+    // Optional deeper duck in one band (the speech band): out = g * bus - (g - gb) * band, which is
+    // exactly the bus when the duck is off, and leaves the rest of the spectrum at the broadband duck.
+    // The band's extra depth may have its own release, so the band comes back as soon as the line ends.
+    const band = d.band ? { pcm: bandPassZeroPhase(bus, d.band.lo, d.band.hi), names: new Map([...names].map(([n, nb]) => [n, bandPassZeroPhase(nb, d.band.lo, d.band.hi)])) } : null;
+    const bandOwn = { ...(d.band?.attackMs != null ? { attackMs: d.band.attackMs } : {}), ...(d.band?.releaseMs != null ? { releaseMs: d.band.releaseMs } : {}) };
+    const bandCurve = Object.keys(bandOwn).length ? keyedDuck(totalSamples, key, { ...levels, ...timing, ...bandOwn }) : curve;
     for (let i = 0; i < totalSamples; i++) {
-      const g = undb(-depthDb * d[i]);
-      for (let c = 0; c < CH; c++) A3[i * CH + c] += bus[i * CH + c] * g;
+      const g = undb(-d.db * curve[i]);
+      const gb = band ? undb(-(d.db * curve[i] + d.band.extraDb * bandCurve[i])) : g;
+      for (let c = 0; c < CH; c++) {
+        const j = i * CH + c;
+        A3[j] += bus[j] * g - (band ? (g - gb) * band.pcm[j] : 0);
+        for (const [name, nb] of names) stemOf(name)[j] += nb[j] * g - (band ? (g - gb) * band.names.get(name)[j] : 0);
+      }
     }
   }
 
@@ -138,5 +163,86 @@ export function renderMix({ totalSamples, voices = [], hits = [], music = null, 
   }
   const mix = new Float32Array(totalSamples * CH);
   for (let i = 0; i < mix.length; i++) mix[i] = A2[i] + A3[i] + A4[i] + A5[i];
-  return { mix, stems: { A2, A3, A4, A5 }, ...report };
+  return { mix, stems: { A2, A3, A4, A5 }, sfxStems, ...report };
+}
+
+// RBJ biquads on interleaved stereo: a low shelf for voice colour, and the high- and low-pass
+// edges QA uses to measure a band.
+function biquad(pcm, [b0, b1, b2, a0, a1, a2]) {
+  const out = new Float32Array(pcm.length);
+  const n = pcm.length / CH;
+  for (let c = 0; c < CH; c++) {
+    let x1 = 0;
+    let x2 = 0;
+    let y1 = 0;
+    let y2 = 0;
+    for (let i = 0; i < n; i++) {
+      const x = pcm[i * CH + c];
+      const y = (b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+      out[i * CH + c] = y;
+      x2 = x1;
+      x1 = x;
+      y2 = y1;
+      y1 = y;
+    }
+  }
+  return out;
+}
+
+export function lowShelf(pcm, freq, gainDb, sr = SR) {
+  const A = 10 ** (gainDb / 40);
+  const w = (2 * Math.PI * freq) / sr;
+  const alpha = (Math.sin(w) / 2) * Math.SQRT2;
+  const cw = Math.cos(w);
+  const s = 2 * Math.sqrt(A) * alpha;
+  return biquad(pcm, [A * (A + 1 - (A - 1) * cw + s), 2 * A * (A - 1 - (A + 1) * cw), A * (A + 1 - (A - 1) * cw - s), A + 1 + (A - 1) * cw + s, -2 * (A - 1 + (A + 1) * cw), A + 1 + (A - 1) * cw - s]);
+}
+
+function pass(pcm, freq, high, sr = SR) {
+  const w = (2 * Math.PI * freq) / sr;
+  const alpha = Math.sin(w) / (2 * Math.SQRT1_2);
+  const cw = Math.cos(w);
+  const b = high ? [(1 + cw) / 2, -(1 + cw), (1 + cw) / 2] : [(1 - cw) / 2, 1 - cw, (1 - cw) / 2];
+  return biquad(pcm, [...b, 1 + alpha, -2 * cw, 1 - alpha]);
+}
+
+// Band-limited copy: two high-pass and two low-pass stages (24 dB per octave at each edge).
+export function bandPass(pcm, lo, hi, sr = SR) {
+  return pass(pass(pass(pass(pcm, lo, true, sr), lo, true, sr), hi, false, sr), hi, false, sr);
+}
+
+// Zero-phase band (the band filter run forward, then over the reversed signal): subtracting it
+// from the original removes the band without the phase smear a one-way filter leaves.
+export function bandPassZeroPhase(pcm, lo, hi, sr = SR) {
+  const rev = (p) => {
+    const out = new Float32Array(p.length);
+    const n = p.length / CH;
+    for (let i = 0; i < n; i++) for (let c = 0; c < CH; c++) out[i * CH + c] = p[(n - 1 - i) * CH + c];
+    return out;
+  };
+  return rev(bandPass(rev(bandPass(pcm, lo, hi, sr)), lo, hi, sr));
+}
+
+// Feed-forward compressor on interleaved stereo, linked: a 5 ms RMS detector, gain reduction
+// above thresholdDb at `ratio`, smoothed with attack/release. The caller sets the level after.
+export function compress(pcm, { thresholdDb = -24, ratio = 3, attackMs = 5, releaseMs = 120 } = {}, sr = SR) {
+  const n = pcm.length / CH;
+  const out = new Float32Array(pcm.length);
+  const w = Math.max(1, Math.round(0.005 * sr));
+  const a = Math.exp(-1 / ((attackMs / 1000) * sr));
+  const r = Math.exp(-1 / ((releaseMs / 1000) * sr));
+  let sum = 0;
+  let grDb = 0;
+  for (let i = 0; i < n; i++) {
+    const x = (pcm[i * CH] ** 2 + pcm[i * CH + 1] ** 2) / 2;
+    sum += x;
+    if (i >= w) sum -= (pcm[(i - w) * CH] ** 2 + pcm[(i - w) * CH + 1] ** 2) / 2;
+    const lvl = 10 * Math.log10(Math.max(sum, 0) / Math.min(i + 1, w) + 1e-20);
+    const want = lvl > thresholdDb ? (lvl - thresholdDb) * (1 - 1 / ratio) : 0;
+    grDb = want > grDb ? a * grDb + (1 - a) * want : r * grDb + (1 - r) * want;
+    const g = 10 ** (-grDb / 20);
+    out[i * CH] = pcm[i * CH] * g;
+    out[i * CH + 1] = pcm[i * CH + 1] * g;
+  }
+  return out;
 }

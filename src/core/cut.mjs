@@ -4,16 +4,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseBrief, findBrief, readBrief, clipKey, parseEventList } from './brief.mjs';
 import { buildEntries, expandCues, enforceShotRules, snapCutsToBeats, placeCues, syncRule } from './edl.mjs';
-import { AssetCache, loadAudio, trimOnset, peakOf } from './assets.mjs';
+import { AssetCache, loadAudio, trimOnset, peakOf, scaleTo } from './assets.mjs';
 import { prepareAudio, pickMusic, alignCached, voiceAsset } from './prepare.mjs';
 import { loadSfxVariants, assignVariants } from './sfx.mjs';
 import { applyVoiceRules, loadVoice } from './voices.mjs';
-import { renderMix } from './mix.mjs';
+import { renderMix, lowShelf, compress } from './mix.mjs';
 import { masterMix, loudnessOk } from './master.mjs';
 import { probeClip, FOOTAGE, renderPicture, mux, renderPreview, renderWide, edlSheet, edgeFrame, retimeFilters, cardChain } from './video.mjs';
 import { syncCheck } from './sync-check.mjs';
 import { contactSheet } from './sheets.mjs';
-import { silences, measureShift, peakAfter, loudestMoment, samplePeakDb, tailLoudness } from './qa.mjs';
+import { silences, measureShift, peakAfter, loudestMoment, samplePeakDb, tailLoudness, speechBandRatio } from './qa.mjs';
 import { writeReport, writeSummary, writeOpenQuestions, writeCueTimes } from './report.mjs';
 import { decode, writeWavFloat, measureR128, probe } from './ff.mjs';
 import { audioProvider } from '../providers/audio/index.mjs';
@@ -174,9 +174,9 @@ export async function cutFilm(opts) {
     h.timeline = h.target;
     h.syncTime = h.target;
     h.file = h.sfx.asset;
-    h.duckDb = cfg.levels.sfxDuck?.[h.sfxName] || 0;
+    h.duck = cfg.levels.sfxDuck?.[h.sfxName] || null;
     if (cfg.levels.sfxHold?.[h.sfxName]) (h.notes ||= []).push(`decay held to ${cfg.levels.sfxHold[h.sfxName].rate} dB/s`);
-    if (h.duckDb) (h.notes ||= []).push(`ducked ${h.duckDb} dB under the voices`);
+    if (h.duck) (h.notes ||= []).push(`ducked ${h.duck.db} dB under the voices${h.duck.attackMs != null || h.duck.releaseMs != null ? ` (${h.duck.attackMs ?? cfg.levels.attackMs} ms attack, ${h.duck.releaseMs ?? cfg.levels.releaseMs} ms release)` : ''}`);
     if (h.gain) (h.notes ||= []).push(`gain ${h.gain > 0 ? '+' : ''}${h.gain} dB`);
   }
 
@@ -195,7 +195,21 @@ export async function cutFilm(opts) {
   const items = [];
   for (const c of cues.filter((x) => x.kind === 'voice' && x.status === 'placed')) {
     const v = audio.voices[c.row];
-    items.push({ cue: c, name: v.name, file: v.file, spoken: v.spoken, ...(await loadVoice(v.file, cfg.levels.voicePeak + (c.gain || 0), cfg.voiceRules.gateDb)) });
+    const peakDb = cfg.levels.voicePeak + (c.gain || 0);
+    const take = await loadVoice(v.file, peakDb, cfg.voiceRules.gateDb);
+    // A low shelf on this role only, then back to the role's peak level.
+    const shelf = cfg.levels.voiceShelf?.[c.voice.toLowerCase()];
+    const comp = cfg.levels.voiceComp?.[c.voice.toLowerCase()];
+    if (shelf) {
+      take.pcm = lowShelf(take.pcm, shelf.freq, shelf.gainDb);
+      (c.notes ||= []).push(`low shelf ${shelf.gainDb > 0 ? '+' : ''}${shelf.gainDb} dB at ${shelf.freq} Hz`);
+    }
+    if (comp) {
+      take.pcm = compress(take.pcm, comp);
+      (c.notes ||= []).push(`compressed ${comp.ratio}:1 above ${comp.thresholdDb} dBFS`);
+    }
+    if (shelf || comp) take.pcm = scaleTo(take.pcm, undb(peakDb) / Math.max(1e-9, peakOf(take.pcm)));
+    items.push({ cue: c, name: v.name, file: v.file, spoken: v.spoken, ...take });
     if (c.gain) (c.notes ||= []).push(`gain ${c.gain > 0 ? '+' : ''}${c.gain} dB (peak ${cfg.levels.voicePeak + c.gain} dBFS)`);
     c.file = v.name;
     c.sentText = v.spoken;
@@ -238,7 +252,8 @@ export async function cutFilm(opts) {
   const mixRes = renderMix({
     totalSamples,
     voices: items.filter((v) => v.cue.status === 'placed').map((v) => ({ pcm: v.pcm, startSample: Math.round(v.start * SR) - v.onset, bus: v.cue.track })),
-    hits: hits.map((h) => ({ pcm: h.sfx.pcm, startSample: h.startSample, gain: h.gain || 0, duckDb: h.duckDb })),
+    hits: hits.map((h) => ({ pcm: h.sfx.pcm, startSample: h.startSample, gain: h.gain || 0, duck: h.duck, sfxName: h.sfxName })),
+    stemsFor: cfg.qa.speechBand ? [cfg.qa.speechBand.sfx] : [],
     music: music ? { pcm: music.pcm, offsetSamples: Math.round(music.pick.grid.downbeat * SR), beatOneAt: cfg.music.beatOneAt || 0, stopAt, stopFadeMs: cfg.music.hardStop?.fadeMs ?? 20, fadeOut: stopAt == null ? cfg.music.fadeOut : 0 } : null,
     ambience: audio.ambience ? { pcm: trimOnset(await loadAudio(audio.ambience.file), { gateDb: -50, preRoll: 0, tail: 0.2 }).pcm, fadeOut: cfg.ambience.fadeOut } : null,
     levels: cfg.levels,
@@ -381,6 +396,26 @@ export async function cutFilm(opts) {
     const ref = hits.find((h) => h.sfxName === cfg.qa.tail.sfx);
     qa.tail = tailLoudness(lm.series, { from: cardFrom - cfg.qa.tail.seconds, to: cardFrom, refAt: ref ? ref.timeline : null, lu: cfg.qa.tail.lu });
     qa.tailOk = qa.tail.ok;
+  }
+  // The line over the effect, in the speech band, from the premix stems (the voice bus holds only
+  // voices; the effect's stem is that effect as mixed, duck included).
+  if (cfg.qa.speechBand) {
+    const sb = cfg.qa.speechBand;
+    const v = items.find((x) => x.cue.status === 'placed' && x.cue.voice.toLowerCase() === sb.role);
+    if (v) {
+      const from = v.start;
+      const to = v.start + (v.pcm.length / CH - v.onset) / SR;
+      const voiceOnly = new Float32Array(mixRes.stems.A2.length);
+      for (const x of items.filter((y) => y.cue.status === 'placed' && y.cue.voice.toLowerCase() === sb.role)) {
+        const st = Math.round(x.start * SR) - x.onset;
+        for (let i = 0; i < x.pcm.length / CH; i++) {
+          const j = st + i;
+          if (j >= 0 && j < voiceOnly.length / CH) for (let ch = 0; ch < CH; ch++) voiceOnly[j * CH + ch] += x.pcm[i * CH + ch];
+        }
+      }
+      qa.speechBand = { ...speechBandRatio(voiceOnly, mixRes.sfxStems?.[sb.sfx] || null, from, to, { lo: sb.lo, hi: sb.hi }), cue: v.cue.id };
+      qa.speechBandOk = qa.speechBand.ratioDb >= sb.minDb - 1e-9;
+    } else qa.speechBandOk = false;
   }
   if (cfg.qa.loudestSfx) {
     const strikes = hits.filter((h) => h.sfxName === cfg.qa.loudestSfx);
