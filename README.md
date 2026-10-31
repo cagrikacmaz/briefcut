@@ -1,7 +1,6 @@
-<p align="center">
-  <a href="media/midnight-preview.mp4"><img src="media/midnight-preview.gif" width="270" alt="Midnight, the last 7.75 s: the bird flies off with a wing flutter, every clock strikes on the hard cut to the dial, the music stops dead, the narrator says Right on the hour, end card."></a>
-  <br><sub>Midnight, last 7.75 s (silent GIF; <a href="media/midnight-preview.mp4">mp4 with sound</a>). Rendered by briefcut from four generated clips and a markdown brief.</sub>
-</p>
+https://github.com/user-attachments/assets/aa6fd615-361e-4ed7-beef-1589a508f583
+
+<p align="center"><sub>Midnight, 15.5 s with sound, rendered by briefcut from four generated clips and a markdown brief. No player? <a href="media/midnight-preview.gif">Silent GIF of the last 7.75 s</a> or <a href="media/midnight-preview.mp4">the mp4</a>.</sub></p>
 
 # briefcut
 
@@ -18,7 +17,20 @@ films. The human writes the brief and the rules and reviews the QA. Agents execu
 
 ## The loop
 
-<p align="center"><img src="media/pipeline.png" width="760" alt="The briefcut loop: brief, scene prompts, generate clips, download and ingest, contact sheets and take selection, event detection, audio generation, cut mix master export, sync check and QA, with steps 6 to 9 repeating."></p>
+```mermaid
+flowchart TD
+  A["brief.md<br/>the human writes the film and the rules"] --> B["scene prompts<br/>agent, from the brief"]
+  B --> C["generate clips<br/>API provider, or a browser agent in your own video tool"]
+  C --> D["download, move into clips/<br/>browser agent, or briefcut ingest"]
+  D --> E["contact sheets, pick takes<br/>agent"]
+  E --> F["find events, pin frames<br/>agent: 2 fps sheet, then 8 and 24 fps strips"]
+  F --> G["voices, music, SFX, ambience<br/>audio provider, cached, never paid twice"]
+  G --> H["cut, mix, master, export<br/>deterministic code"]
+  H --> I["sync_check.jpg + QA REPORT.md<br/>agent checks every cue against its frame"]
+  I -- "a frame is off" --> F
+  I -- "QA passes" --> J["the human reviews the report"]
+  J -. "revision: a FIX file, next version" .-> H
+```
 
 ```
 brief.md
@@ -40,69 +52,86 @@ says so. Details: [docs/RULES.md](docs/RULES.md).
 
 ## How Midnight was made
 
-Midnight is a 17.75 s vertical film about a clockmaker's workshop at night: hammer taps on brass,
-a gear seating, a cuckoo, and every clock striking midnight. Everything is in
-[`examples/midnight/`](examples/midnight/) except the clips, audio and masters (the masters are
-attached to the v0.1.0 release).
+Midnight is a 15.5 s vertical film about a clockmaker's workshop at night: hammer taps on brass,
+a gear seating, a cuckoo, and every clock striking midnight. The full build log is in
+[`examples/midnight/`](examples/midnight/): brief, revision, take notes, cue sheet, strips,
+sheets, report and every decision. Clips, audio and masters are not in git; the masters are
+attached to the v0.1.0 release.
 
-1. **I wrote the film idea and the rules.** A coding agent wrote the scene prompts
+1. **I wrote the film idea, the rules, the brief format and the QA checks.** The scene prompts
    ([`FLOW_BRIEF.md`](examples/midnight/FLOW_BRIEF.md)) and the production brief
-   ([`BRIEF.md`](examples/midnight/BRIEF.md)) from them.
-2. **Clips: a browser agent in my own browser session**, following
-   [`playbooks/flow-browser-agent.md`](playbooks/flow-browser-agent.md): a new Google Flow project,
-   9:16, Veo 3.1 Quality, 8 s, 2 takes per prompt; 4 scene prompts submitted; 7 takes downloaded as
-   1080p upscales (one did not download); moved into the film folder; contact sheets made; 4 takes
-   picked, 3 rejected (one for a film-sprocket overlay that appears at 3.5 s); reasons in
-   [`clips/NOTES.md`](examples/midnight/clips/NOTES.md). About 800 Flow credits.
-   All seven take sheets: [`media/take-sheets.jpg`](media/take-sheets.jpg).
-3. **Then a coding agent ran briefcut**, unattended:
+   ([`BRIEF.md`](examples/midnight/BRIEF.md)) follow from them.
+2. **A browser agent produced the clips in Google Flow, in my own session**, following
+   [`playbooks/flow-browser-agent.md`](playbooks/flow-browser-agent.md): 9:16, Veo 3.1 Quality,
+   8 s, 2 takes per prompt, 4 prompts; 7 takes downloaded as 1080p upscales (one did not
+   download); 4 used and 3 rejected (one for a film-sprocket overlay at 3.5 s), with reasons in
+   [`clips/NOTES.md`](examples/midnight/clips/NOTES.md). About 800 Flow credits. All seven take
+   sheets: [`media/take-sheets.jpg`](media/take-sheets.jpg).
+3. **A coding agent ran briefcut unattended.**
    - **Events.** 2 fps sheets, then 8 and 24 fps strips (22 strips, all in
-     [`examples/midnight/out/strips/`](examples/midnight/out/strips/)); 19 events in
-     [`out/cues.md`](examples/midnight/out/cues.md), 13 pinned to their frames and 6 marked not found,
-     each with how it was found. The
-     strips found what the sheets hid: the hammer does not tap three times, it taps every 11-12
-     frames, which a 2 fps sheet (one tile every 12 frames) shows as a still hammer. All seven taps
-     in the shot got a sound, recorded in [`OVERRIDES.md`](examples/midnight/OVERRIDES.md).
-   - **Deviations, flagged on top of the report**: no discrete escapement step is visible (the
-     balance wheel turns continuously, out of focus), so the six ticks sit on the music's beats;
-     the clock's hands never meet at XII, so the strike lands on the hard cut to the dial, as the
+     [`out/strips/`](examples/midnight/out/strips/)), written to
+     [`out/cues.md`](examples/midnight/out/cues.md) with how each frame was found. The strips
+     found what the sheets hid: the hammer does not tap three times, it taps every 11-12 frames,
+     which a 2 fps sheet (one tile every 12 frames) shows as a still hammer. All seven taps in the
+     shot got a sound, recorded in [`OVERRIDES.md`](examples/midnight/OVERRIDES.md).
+   - **Deviations, flagged on top of the report.** No discrete escapement step is visible (the
+     balance wheel turns continuously, out of focus), so the tick sits on the music's beat; the
+     clock's hands never meet at XII, so the strike lands on the hard cut to the dial, as the
      brief planned.
-   - **Audio.** [`out/COST.md`](examples/midnight/out/COST.md) before any call: 16 requests, about
-     0.43 USD (2,174 credits). ElevenLabs then made 16 generations in 41 s: 1 narrator line
+   - **Audio.** [`out/COST.md`](examples/midnight/out/COST.md) before any call: 16 requests,
+     about 0.43 USD (2,174 credits). ElevenLabs made 16 generations in 41 s: 1 narrator line
      (18 characters, voice "George", the brief's first candidate), 12 sound-effect variants,
-     2 music takes (take 1 kept: steadiest tempo, 120.00 BPM, local spread 0.04 BPM vs 0.15) and
-     1 ambience bed. Every later render reused the cache.
-   - **Sync.** 20 sounds placed; measured in the master, every one sits 0.00 frames from its
-     target (tolerance ±1), and every row of `sync_check.jpg` was checked by eye. Three iterations:
-     the first render put a two-part door clack, a cuckoo call and a wing flutter 1.2-2.1 frames
-     off, which led to placing effects by their attack point (see the
-     [report](examples/midnight/out/REPORT.md)).
-   - **Decisions**: 11 written down, 4 by briefcut and 7 by the agent, in
-     [`OPEN_QUESTIONS.md`](examples/midnight/OPEN_QUESTIONS.md).
-   - **Runtime**: audio 41 s, cut and export 49 s. A regression re-render in a mirror folder was
-     frame-identical (426 of 426 frames) and bit-identical in audio.
+     2 music takes (take 1 kept: steadiest tempo, 120.00 BPM, local spread 0.04 BPM against 0.15)
+     and 1 ambience bed. Every later render reused the cache; the revision made no paid call.
+   - **Sync.** The first render put a two-part door clack, a cuckoo call and a wing flutter
+     1.2-2.1 frames off, which led to placing effects by their attack point. Since then every
+     sound measures 0.00 frames from its target in the master (tolerance ±1), and every row of
+     `sync_check.jpg` was checked by eye.
+4. **I reviewed the result and asked for one revision** (v2: ending energy, a tighter cut, social
+   loudness). In v1 the last seconds before the end card fell to -42.57 LUFS momentary, 35 LU
+   under the strike; S2 and S4 held near-static frames; the end card's second line was small on
+   a phone; LinkedIn and X do not normalize loudness. The revision is one file,
+   [`FIX01.md`](examples/midnight/FIX01.md): each section replaces the brief's section of the same
+   name, the render is `_v2`, and v1 stays as delivered ([`out/v1/`](examples/midnight/out/v1/)).
+   It holds the strike's own decay to fall no faster than 1.2 dB/s and ducks it 4 dB under the
+   narrator, raises the narrator 3 dB and starts it at strike + 1.5 s, runs the ambience through
+   the end card, puts one soft tick on the frame the card text settles, trims S2 to 2.0 s and S4
+   to 4.5 s, makes the card 1.5 s with its second line at 104 px instead of 50, and adds
+   -10 LUFS social masters. briefcut gained the options to say this in a brief (row gain, held
+   decay, effect duck, end-card line size, a second loudness target per export, an ending-energy
+   QA row). The first v2 renders failed in two places. The tail dipped 9.35 LU under the strike
+   just after the line, fixed with a slower held decay and the music's 4 dB duck. The social
+   masters overshot the true-peak limit after AAC encoding, and one render that read -1.0 dBTP
+   had a sample peak of -0.97 dBFS; the true-peak rule now counts the sample peak, and the social
+   masters settled at a -4.5 dBTP limiter ceiling.
+   - **Runtime.** Audio 41 s (v1). The v2 cut with all five exports took 64 s; a regression
+     re-render in a mirror folder was frame-identical (372 of 372 frames) and bit-identical in
+     audio.
 
-QA, from [`out/REPORT.md`](examples/midnight/out/REPORT.md):
+QA of v2, from [`out/REPORT.md`](examples/midnight/out/REPORT.md):
 
 | # | Check | Result | Detail |
 |---|---|---|---|
-| 1 | Duration 15-20 s | PASS | 17.750 s, 426 frames |
-| 2 | Loudness -14 LUFS ±0.5, true peak ≤ -1 dBTP, no clipping | PASS | -14.00 LUFS, -1.30 dBTP, measured on the exported AAC |
-| 3 | Every event and cue placed or logged | PASS | 20 placed, 0 dropped, 7 events flagged not found |
-| 4 | Every sound within ±1 frame, measured on the master | PASS | worst 0.00 frames over 20 sounds |
-| 5 | Music silent after the hard stop | PASS | digital silence from 11.020 s |
-| 6 | The midnight strike is the loudest moment (400 ms momentary) | PASS | -7.42 LUFS momentary at 11.30 s, strike at 11.00 s |
-| 7 | First sound within 0.5 s | PASS | first tap at 0.042 s |
-| 8 | First frame not black, last frame is the end card | PASS | |
-| 9 | No audio from the source clips | PASS | |
-| 10 | Hard cuts only, no retiming | PASS | render graph checked |
-| 11 | Min shot 2.0 s | PASS | shortest 3.000 s |
-| 12 | Cuts on the music grid | PASS | worst 0.16 ms off a beat |
-| 13 | No silence holes | PASS | |
+| 1 | Duration 15.5-16.5 s | PASS | 15.500 s, 372 frames |
+| 2 | Master: -14 LUFS ±0.5, true peak ≤ -1 dBTP, no clipping | PASS | -13.90 LUFS, -1.40 dBTP, sample peak -1.40 dBFS |
+| 3 | Every event and cue placed or logged | PASS | 16 placed, 0 dropped, 1 event flagged not found |
+| 4 | Every sound within ±1 frame, measured on the master | PASS | worst 0.00 frames over 16 sounds |
+| 5 | Music silent after the hard stop | PASS | digital silence from 9.520 s |
+| 6 | The midnight strike is the loudest moment (400 ms momentary) | PASS | -8.33 LUFS at 9.80 s, strike at 9.50 s |
+| 7 | `MIDNIGHT_social_v2.mp4`: -10 LUFS ±0.5, true peak ≤ -1 dBTP, no clipping | PASS | -10.10 LUFS, -1.60 dBTP, sample peak -1.56 dBFS |
+| 8 | `MIDNIGHT_16x9_social_v2.mp4`: the same | PASS | -10.10 LUFS, -1.60 dBTP, sample peak -1.56 dBFS |
+| 9 | Last 3 s before the end card within 8 LU of the strike | PASS | lowest -15.38 LUFS at 12.20 s, 7.05 LU under the strike |
+| 10 | First sound within 0.5 s | PASS | first tap at 0.042 s |
+| 11 | First frame not black, last frame is the end card | PASS | |
+| 12 | No audio from the source clips | PASS | |
+| 13 | Hard cuts only, no retiming | PASS | render graph checked |
+| 14 | Min shot 2.0 s | PASS | shortest 2.000 s |
+| 15 | Cuts on the music grid | PASS | worst 0.14 ms off a beat |
+| 16 | No silence holes | PASS | |
 
 ## What `sync_check.jpg` proves
 
-<p align="center"><img src="media/sync_check.jpg" width="760" alt="Sync check sheet of Midnight: for each of 20 sounds, three frames from the master: 1/8 s before, the frame under the sound, 1/8 s after, labelled with the cue and what the frame must show."></p>
+<p align="center"><img src="media/sync_check.jpg" width="760" alt="Sync check sheet of Midnight: for each of 16 sounds, three frames from the master: 1/8 s before, the frame under the sound, 1/8 s after, labelled with the cue and what the frame must show."></p>
 
 Every row is one sound, cut from the rendered master, not from the source clips: the frame under
 the start of the sound, with the frame 1/8 s before and 1/8 s after, labelled with the cue, its
@@ -172,12 +201,13 @@ All commands: `briefcut help`. Flags: `--offline`, `--mock`, `--max-spend <usd>`
 
 ```
 ## Audio map
-| Scene | Track | Voice | Text | At event | Offset |
-|---|---|---|---|---|---|
-| S1_HAMMER | A3 | sfx:hammer_tap | | tap_1, tap_2, tap_3 | 0.00 |
-| S2_GEARS | A3 | sfx:escapement | | step_* (every one) | 0.00 |
-| S4_MIDNIGHT | A3 | sfx:midnight_strike | | midnight | 0.00 |
-| S4_MIDNIGHT | A2 | Narrator | `Right on the hour.` | midnight | 1.80 |
+| Scene | Track | Voice | Text | At event | Offset | Gain |
+|---|---|---|---|---|---|---|
+| S1_HAMMER | A3 | sfx:hammer_tap | | tap_1, tap_2, tap_3 | 0.00 | |
+| S2_GEARS | A3 | sfx:escapement | | step_* (every one) | 0.00 | |
+| S4_MIDNIGHT | A3 | sfx:midnight_strike | | midnight | 0.00 | |
+| S4_MIDNIGHT | A2 | Narrator | `Right on the hour.` | midnight | 1.50 | +3 |
+| END_CARD | A3 | sfx:escapement | | text_in | 0.00 | -4 |
 
 ## Music and ambience
 - Music (A4): `tense ticking music box and pizzicato strings, 120 BPM, instrumental only, 20 seconds`. Two takes, keep the one whose tempo is steadiest.
@@ -185,7 +215,9 @@ All commands: `briefcut help`. Flags: `--offline`, `--mock`, `--max-spend <usd>`
 ```
 
 A brief also has the goal, shot rules, scenes, EDL, event detection table, voices, SFX table,
-mix levels, end card, export and QA sections. Full reference: [docs/BRIEF_FORMAT.md](docs/BRIEF_FORMAT.md).
+mix levels, end card, export and QA sections. A revision after review is a FIX file: each of its
+sections replaces the brief's section of the same name, and the next render is `_v2`. Full
+reference: [docs/BRIEF_FORMAT.md](docs/BRIEF_FORMAT.md).
 
 ## Providers
 
@@ -205,8 +237,8 @@ supported: [docs/PROVIDERS.md](docs/PROVIDERS.md).
 
 ## Agents
 
-[`AGENTS.md`](AGENTS.md) is the operating manual any coding agent reads first.
-The playbooks are the procedures:
+[`AGENTS.md`](AGENTS.md) is the operating manual any coding agent reads first. The playbooks are
+the procedures:
 [browser agent in a video tool](playbooks/flow-browser-agent.md),
 [take selection](playbooks/take-selection.md),
 [event detection](playbooks/event-detection.md). The order of work and the files that carry state
@@ -218,7 +250,7 @@ instructions for an agent that you supervise, in your own account, at your own d
 
 ## Lessons
 
-[docs/LESSONS.md](docs/LESSONS.md) lists 66 failure modes my production runs hit, each as symptom,
+[docs/LESSONS.md](docs/LESSONS.md) lists 69 failure modes my production runs hit, each as symptom,
 cause, rule and check. Five of them:
 
 - Voices landed 0.1-0.6 s late -> generated audio carries leading silence; place the onset, never the file start.
@@ -240,11 +272,12 @@ cause, rule and check. Five of them:
 npm test
 ```
 
-45 tests, offline, mock providers, no network: the brief parser, EDL frame math, beat snap,
-voice rules, onset and transient trims, loudness math, wildcard events, the music hard stop,
-song-block bit identity, provider contracts, a golden demo render (every sound within ±1 frame of
-its known flash, -14 ±0.5 LUFS, true peak ≤ -1 dBTP), and a privacy scan for names, local paths
-and anything that looks like a key. CI runs them on Linux, Windows and macOS.
+53 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
+beat snap, voice rules, onset and transient trims, loudness math, wildcard events, the music hard
+stop, held decay and effect ducking, song-block bit identity, provider contracts, a golden demo
+render (every sound within ±1 frame of its known flash, the master at -14 ±0.5 LUFS and a social
+pair at -10 ±0.5 LUFS, true peak ≤ -1 dBTP), and a privacy scan for names, local paths, anything
+that looks like a key, and assistant or model brands. CI runs them on Linux, Windows and macOS.
 
 ## License
 
