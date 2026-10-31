@@ -10,7 +10,7 @@ import { loadSfxVariants, assignVariants } from './sfx.mjs';
 import { applyVoiceRules, loadVoice } from './voices.mjs';
 import { renderMix } from './mix.mjs';
 import { masterMix, loudnessOk } from './master.mjs';
-import { probeClip, renderPicture, mux, renderPreview, renderWide, edlSheet, edgeFrame, retimeFilters, cardChain } from './video.mjs';
+import { probeClip, FOOTAGE, renderPicture, mux, renderPreview, renderWide, edlSheet, edgeFrame, retimeFilters, cardChain } from './video.mjs';
 import { syncCheck } from './sync-check.mjs';
 import { contactSheet } from './sheets.mjs';
 import { silences, measureShift, peakAfter, loudestMoment, samplePeakDb, tailLoudness } from './qa.mjs';
@@ -24,7 +24,7 @@ export function findClips(filmDir) {
   const out = {};
   for (const d of dirs) {
     for (const name of fs.readdirSync(d).sort()) {
-      if (!/\.(mp4|mov|mkv|webm)$/i.test(name)) continue;
+      if (!FOOTAGE.test(name)) continue;
       const key = clipKey(path.parse(name).name);
       out[key] ??= path.join(d, name);
     }

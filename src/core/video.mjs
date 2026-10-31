@@ -25,8 +25,20 @@ export const filterPath = (p) => `'${p.replace(/\\/g, '/').replace(/:/g, '\\:').
 const textOk = () => hasFilter('drawtext');
 const fontOpt = (font) => (font ? `fontfile=${filterPath(font)}:` : '');
 
+// Footage briefcut reads from clips/: video files, and stills, which become held shots.
+export const STILL = /\.(jpe?g|png|webp|tiff?|bmp)$/i;
+export const FOOTAGE = /\.(mp4|mov|m4v|mkv|webm|mxf|jpe?g|png|webp|tiff?|bmp)$/i;
+const STILL_MAX_SECONDS = 600;
+
 export async function probeClip(file, cfg, log) {
   const info = await probe(file);
+  if (STILL.test(file)) {
+    // A still is a held shot: one picture repeated at the film's frame rate for exactly the
+    // frames its EDL row asks for, scaled and padded like any clip. Nothing moves in it.
+    const v = info.streams.find((s) => s.codec_type === 'video');
+    log?.assume('still', `${path.basename(file)} is a still (${v.width}x${v.height}); it is held for its EDL length at ${cfg.fps} fps, scaled to fit ${cfg.width}x${cfg.height}`);
+    return { file, still: true, width: v.width, height: v.height, fps: cfg.fps, frames: Math.round(STILL_MAX_SECONDS * cfg.fps), hasAudio: false, colorTags: [v.color_space, v.color_primaries, v.color_transfer, v.color_range].map((x) => x || '-').join('/'), conform: false };
+  }
   const v = info.streams.find((s) => s.codec_type === 'video');
   const [num, den] = v.r_frame_rate.split('/').map(Number);
   const fps = num / den;
@@ -91,6 +103,9 @@ async function renderChunk(entries, cfg, out, workDir) {
       args.push('-f', 'lavfi', '-i', `color=c=${cfg.endCard.background || 'black'}:s=${cfg.width}x${cfg.height}:r=${cfg.fps}:d=${d.toFixed(6)}`);
       const { chain } = cardChain(cfg, workDir);
       parts.push(`[${k}:v]format=yuv420p,setsar=1,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv${chain ? `,${chain}` : ''},trim=end_frame=${e.outF - e.inF},setpts=PTS-STARTPTS[v${k}]`);
+    } else if (e.clip.still) {
+      args.push('-loop', '1', '-framerate', String(cfg.fps), '-i', e.clip.file);
+      parts.push(`[${k}:v]trim=start_frame=${e.inF}:end_frame=${e.outF},setpts=PTS-STARTPTS,${colorChain(cfg, e)}[v${k}]`);
     } else {
       args.push('-i', e.clip.file);
       parts.push(`[${k}:v]${fpsChain(e.clip, cfg)}trim=start_frame=${e.inF}:end_frame=${e.outF},setpts=PTS-STARTPTS,${colorChain(cfg, e)}[v${k}]`);

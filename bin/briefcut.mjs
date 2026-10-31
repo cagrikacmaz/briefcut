@@ -15,7 +15,7 @@ import { contactSheet, writeMotion } from '../src/core/sheets.mjs';
 import { makeStrip } from '../src/core/strips.mjs';
 import { draftCues } from '../src/core/autocues.mjs';
 import { regress } from '../src/core/regress.mjs';
-import { probeClip } from '../src/core/video.mjs';
+import { probeClip, FOOTAGE } from '../src/core/video.mjs';
 import { AssetCache } from '../src/core/assets.mjs';
 import { audioProvider } from '../src/providers/audio/index.mjs';
 import { videoProvider } from '../src/providers/video/index.mjs';
@@ -30,7 +30,7 @@ const HELP = `briefcut ${VERSION}: brief in, film out.
   briefcut prompts <dir>                 scene prompts (flow_brief.md) from the brief
   briefcut generate <dir> [--takes n]    clips from an API video provider (jobs in out/jobs.json)
   briefcut ingest <dir> --from <path> [--since 30m] [--match <glob>]
-                                         copy downloaded takes into clips/_takes and probe them
+                                         copy video and stills (a download folder, a card) into clips/_takes and probe them
   briefcut sheets <dir> [--takes]        2 fps contact sheets + motion profile per clip (or take)
   briefcut strip <dir> <clip> <seconds> ["label"] [--fps 8|24]
   briefcut prepare <dir>                 voices, music, SFX, ambience (cached, never paid twice)
@@ -103,18 +103,19 @@ async function main() {
     await generateClips({ cfg, filmDir, providerName: flags.mock ? 'mock' : flags.provider, takes: Number(flags.takes || 1), maxSpend: maxSpend(flags), log, seconds: Number(flags.seconds || cfg.clipSeconds || 8) });
   } else if (cmd === 'ingest') {
     if (!flags.from) throw new Error('ingest needs --from <folder>');
-    await ingest({ filmDir, from: flags.from, since: flags.since || null, match: flags.match || '*.mp4', cfg, log });
+    await ingest({ filmDir, from: flags.from, since: flags.since || null, match: flags.match || null, cfg, log });
   } else if (cmd === 'sheets') {
     const dir = ensureDir(path.join(filmDir, 'out', 'sheets'));
     const files = flags.takes
-      ? Object.fromEntries(fs.readdirSync(path.join(filmDir, 'clips', '_takes')).filter((f) => /\.(mp4|mov|webm)$/i.test(f)).map((f) => [f.replace(/\.[^.]+$/, ''), path.join(filmDir, 'clips', '_takes', f)]))
+      ? Object.fromEntries(fs.readdirSync(path.join(filmDir, 'clips', '_takes')).filter((f) => FOOTAGE.test(f)).map((f) => [f.replace(/\.[^.]+$/, ''), path.join(filmDir, 'clips', '_takes', f)]))
       : findClips(filmDir);
     for (const [k, f] of Object.entries(files)) {
       const clip = await probeClip(f, cfg, null);
       const name = flags.takes ? k : path.parse(f).name;
-      await contactSheet(f, path.join(dir, `${name}.jpg`), { fps: cfg.sync.sheetFps, width: cfg.sync.sheetWidth, srcFps: clip.fps, frames: clip.frames });
+      // A still has one picture: one tile.
+      await contactSheet(f, path.join(dir, `${name}.jpg`), { fps: cfg.sync.sheetFps, width: cfg.sync.sheetWidth, srcFps: clip.fps, frames: clip.still ? 1 : clip.frames });
       await writeMotion(f, path.join(dir, `${name}.motion.tsv`), clip.fps);
-      console.log(`out/sheets/${name}.jpg (${clip.width}x${clip.height}, ${clip.frames} frames)`);
+      console.log(`out/sheets/${name}.jpg (${clip.width}x${clip.height}, ${clip.still ? 'still, held for its EDL length' : `${clip.frames} frames`})`);
     }
   } else if (cmd === 'strip') {
     need(3);
