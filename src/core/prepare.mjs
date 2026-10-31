@@ -7,6 +7,7 @@ import { applyPronunciations, loadPronunciations, speakableText, loadAudio } fro
 import { sfxRequests } from './sfx.mjs';
 import { detectBeats, tempoSteadiness, monoOf } from './beats.mjs';
 import { SR, readJson, writeJson, exists } from './util.mjs';
+import { auditionRole } from './audition.mjs';
 
 export const voiceAsset = (c, n = 0) => `vo_${c.row}_${c.voice.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-')}${n ? `_r${n}` : ''}`;
 
@@ -35,14 +36,32 @@ export function plannedRequests(cfg, providerName, { filmDir, voices = {} } = {}
   return out;
 }
 
-// Voices by name: for every role, the first candidate that exists in the account.
-export async function resolveVoices(cfg, provider, log) {
+// Voices by name: for every role, the first candidate that exists in the account. A role "by
+// audition" generates its line with every candidate and takes the lowest, fullest voice.
+export async function resolveVoices(cfg, provider, log, { cache = null, filmDir = null } = {}) {
   const out = {};
   for (const c of cfg.cues.filter((x) => x.kind === 'voice')) {
     const key = c.voice.toLowerCase();
     if (out[key]) continue;
     const role = cfg.tts.roles[key];
     const cands = role.candidates.length ? role.candidates : [c.voice];
+    if (role.audition && cache) {
+      const planFor = (v) => plannedRequests(cfg, provider.name, { filmDir, voices: { [key]: v } }).find((p) => p.cue === c);
+      out[key] = await auditionRole({
+        key,
+        role,
+        text: planFor(null).request.text,
+        audioDir: cache.dir,
+        outDir: path.join(filmDir, 'out'),
+        resolve: (name) => provider.resolveVoice([name]),
+        make: (v) => {
+          const p = planFor(v);
+          return cache.get(p.asset, p.request, () => provider.tts({ voiceId: v.id, text: p.request.text, model: p.request.model, settings: p.request.settings, asset: p.asset }));
+        },
+        log,
+      });
+      continue;
+    }
     const v = await provider.resolveVoice(cands);
     out[key] = v;
     const msg = `${c.voice}: used voice "${v.name}"${cands.length > 1 ? ` (candidate ${v.rank} of ${cands.length}: ${cands.join(', ')})` : ''}`;
@@ -53,7 +72,7 @@ export async function resolveVoices(cfg, provider, log) {
 }
 
 export async function prepareAudio({ cfg, filmDir, provider, cache, log, voices = null }) {
-  const vmap = voices || (cfg.cues.some((c) => c.kind === 'voice') ? await resolveVoices(cfg, provider, log) : {});
+  const vmap = voices || (cfg.cues.some((c) => c.kind === 'voice') ? await resolveVoices(cfg, provider, log, { cache, filmDir }) : {});
   const plan = plannedRequests(cfg, provider.name, { filmDir, voices: vmap });
   const got = { voices: {}, sfx: [], music: [], ambience: null, voiceIds: vmap };
   for (const p of plan) {

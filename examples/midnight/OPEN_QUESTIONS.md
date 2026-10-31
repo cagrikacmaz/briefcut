@@ -22,6 +22,21 @@ What the brief did not settle, and what was decided instead of asking. Edit the 
 - **End card line 2**: 5.4% of the frame height, 104 px against 50 px in v1 (2.08x); it spans about 80% of the frame width, so it was not made larger.
 - **Social true peak**: the meter prints true peak to 0.1 dB. The first social render that read -1.0 dBTP had a sample peak of -0.97 dBFS, so the true peak was above -1. briefcut now counts the sample peak in the true-peak rule; the social masters settled at a -4.5 dBTP limiter ceiling (TP -1.6 dBTP, sample peak -1.56 dBFS, LRA 1.3 LU).
 
+## Decided by the agent for v3 (MIDNIGHT_FIX02.md)
+
+- **Narrator voice, by audition** (`briefcut prepare`, full table in out/AUDITION.md). The line "Right on the hour." with each candidate, eleven_multilingual_v2, stability 0.6, similarity 0.8, style 0.1, speed 0.9, measured over its voiced frames:
+
+  | Candidate | Voice in the account | Fundamental | Spectral centroid | Low share (80-300 Hz) |
+  |---|---|---|---|---|
+  | Daniel | Daniel - Steady Broadcaster | 124.0 Hz | 1465 Hz | 81.6% |
+  | **Adam (picked)** | Adam Stone - Smooth, Deep, and Relaxed | 90.1 Hz | 1424 Hz | 49.9% |
+  | Bill | Bill - Wise, Mature, Balanced | 241.2 Hz | 1752 Hz | 40.6% |
+  | Brian | Brian - Deep, Resonant and Comforting | 133.7 Hz | 1676 Hz | 43.6% |
+
+  Adam has both the lowest fundamental and the lowest centroid, so it is the lowest voice on both measures. Daniel has the largest share below 300 Hz but sits 34 Hz higher. Bill's 241 Hz is probably an octave error of the pitch tracker on a breathy take; Bill has the highest centroid either way, so the pick does not depend on it. Cost: 4 lines, 72 characters, about 0.01 USD; Adam's take is the one the cut uses (cached, not paid twice), with its own forced alignment.
+- **Clear over the bell (speech band 300-3000 Hz, the band a phone speaker reproduces).** With the owner's settings alone (narrator -3 dBFS peak, low shelf +2 dB at 150 Hz, strike ducked 6 dB with 150 ms attack and 600 ms release) the line measured 1.09 dB *under* the strike in that band, and the dip after the line was 9.08 LU (tail rule 8). The held decay keeps the bell near its peak where the line sits. Kept the owner's broadband duck as given and added, in this order of renders: a deeper duck in the speech band only (zero-phase band split, so the rest of the bell keeps the 6 dB duck); its own fast attack and release (20/60 ms) so the band clears under the first word and comes back as soon as the line ends; a 40 ms hold and a -24 dBFS key so the duck follows the line rather than its breath tail; a narrator compressor (6:1 above -30 dBFS) so the end of the line is as present as its start; and the held decay at 0.3 dB/s (was 1.2) so the bell is full again right after the line. Measured: speech band +6.44 dB for the line over the strike (QA threshold 6 dB, set before these renders), tail 7.15 LU. The bell sounds hollower under the line, which is the trade for a clear line on a phone.
+- **Renders**: ten v3 renders while tuning (picture reused from v2, no paid call after the audition); each replaced the previous v3 files (the last three kept in out/work/prev), and only the last is delivered as MIDNIGHT_*_v3. Every SFX frame and sync_check.jpg are unchanged from v2 (byte-identical image, 16 of 16 cue times equal).
+
 <!-- briefcut:start -->
 ## Decided by briefcut
 
@@ -29,4 +44,6 @@ What the brief did not settle, and what was decided instead of asking. Edit the 
 - **clip audio**: 4 source clip(s) carry an audio stream (S1_HAMMER.mp4, S2_GEARS.mp4, S3_CUCKOO.mp4, S4_MIDNIGHT.mp4); it is discarded, as the brief says
 - **soft attack**: cue 5.1 cuckoo_call: the brief's -0.05 s offset compensates a soft attack; briefcut places the measured attack on the event frame instead (attack 1 ms after the gated onset in this take)
 - **soft attack**: cue 5.2 cuckoo_call: the brief's -0.05 s offset compensates a soft attack; briefcut places the measured attack on the event frame instead (attack 1 ms after the gated onset in this take)
+- **loudness**: MIDNIGHT_master_v3.mp4: loudnorm's target was biased +0.20 LU so the export measures -14 LUFS on the EBU R128 meter (loudnorm's internal meter reads this short film differently)
+- **loudness**: MIDNIGHT_social_v3.mp4: loudnorm's target was biased +0.30 LU so the export measures -10 LUFS on the EBU R128 meter (loudnorm's internal meter reads this short film differently)
 <!-- briefcut:end -->

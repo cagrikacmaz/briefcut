@@ -11,12 +11,22 @@ export async function estimateFilm({ cfg, filmDir, provider, videoProvider = nul
   const cache = new AssetCache(audioDir, { log, offline: true });
   const voices = readJson(path.join(audioDir, 'voices.json')) || {};
   const plan = plannedRequests(cfg, provider.name, { filmDir, voices });
-  const rows = plan.map((p) => {
+  const rows = plan.flatMap((p) => {
+    const detail = p.request.kind === 'tts' ? `"${p.request.text}" (${p.request.text.length} chars, ${p.request.model})` : `${p.request.seconds ?? '-'} s: ${String(p.request.prompt).slice(0, 70)}`;
+    // A role chosen by audition needs its line once per candidate voice, unless the audition with
+    // these candidates, settings and text has already run (its pick is frozen in audio/).
+    const key = p.cue?.voice?.toLowerCase();
+    const role = key ? cfg.tts.roles[key] : null;
+    if (role?.audition) {
+      const frozen = readJson(path.join(audioDir, `audition_${key}.json`));
+      const done = frozen?.sig === JSON.stringify({ candidates: role.candidates, settings: role.settings, model: role.model, text: p.request.text });
+      return role.candidates.map((cand) => ({ asset: `${p.asset} (audition: ${cand})`, kind: 'tts', detail, cached: done, usd: done ? 0 : provider.price(p.request), credits: done ? 0 : provider.credits ? provider.credits(p.request) : null }));
+    }
     // A request whose voice is not resolved yet cannot be matched by fingerprint; match by name.
     const fp = sha1(stableJson(p.request));
-    const hit = Object.entries(cache.index).find(([k, m]) => k.replace(/\.[^.]+$/, '') === p.asset && (m.fingerprint === fp || !voices[p.cue?.voice?.toLowerCase()]));
+    const hit = Object.entries(cache.index).find(([k, m]) => k.replace(/\.[^.]+$/, '') === p.asset && (m.fingerprint === fp || !voices[key]));
     const usd = hit ? 0 : provider.price(p.request);
-    return { asset: p.asset, kind: p.request.kind, detail: p.request.kind === 'tts' ? `"${p.request.text}" (${p.request.text.length} chars, ${p.request.model})` : `${p.request.seconds ?? '-'} s: ${String(p.request.prompt).slice(0, 70)}`, cached: !!hit, usd, credits: hit ? 0 : provider.credits ? provider.credits(p.request) : null };
+    return [{ asset: p.asset, kind: p.request.kind, detail, cached: !!hit, usd, credits: hit ? 0 : provider.credits ? provider.credits(p.request) : null }];
   });
   let video = null;
   if (videoProvider && cfg.scenes.length && videoProvider.name !== 'handoff') {

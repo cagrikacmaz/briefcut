@@ -267,9 +267,12 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
     if (/^voices by name$/i.test(m[1])) continue;
     cfg.tts.roles[m[1].trim().toLowerCase()] = { name: m[1].trim(), model: m[2], settings: voiceSettingsFrom(m[3], cfg.tts.settings), candidates: [] };
   }
-  for (const m of el.matchAll(/^[-*\s]*([A-Z][\w ]*?) voice by name[^:]*:\s*([^\n]+)$/gim)) {
+  // "Narrator voice by audition, lowest and fullest: `A`, `B`": every candidate is generated and
+  // measured, and the lowest, fullest voice is used (see src/core/audition.mjs).
+  for (const m of el.matchAll(/^[-*\s]*([A-Z][\w ]*?) voice by (name|audition)[^:]*:\s*([^\n]+)$/gim)) {
     const role = (cfg.tts.roles[m[1].trim().toLowerCase()] ??= { name: m[1].trim(), model: cfg.tts.model, settings: { ...cfg.tts.settings }, candidates: [] });
-    role.candidates = [...m[2].matchAll(/`([^`]+)`/g)].map((x) => x[1]);
+    role.candidates = [...m[3].matchAll(/`([^`]+)`/g)].map((x) => x[1]);
+    role.audition = m[2].toLowerCase() === 'audition';
   }
   const byName = el.match(/Voices by name:\s*([^\n]+)/i);
   if (byName) for (const v of [...byName[1].matchAll(/`([^`]+)`/g)].map((x) => x[1])) cfg.tts.roles[v.toLowerCase()] ??= { name: v, model: cfg.tts.model, settings: { ...cfg.tts.settings }, candidates: [v] };
@@ -385,15 +388,38 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
   }
   // "midnight_strike decay held to 1.5 dB/s from 0.5 s after its attack (lift at most 30 dB)":
   // the take's tail is lifted so it falls no faster than that rate. "<name> ducked 6 dB under the
-  // narrator": that effect is ducked under the voice bus like the music.
+  // narrator (150 ms attack, 600 ms release)": that effect is ducked under the voice bus like the
+  // music, with its own timing when given.
   cfg.levels.sfxHold = {};
   cfg.levels.sfxDuck = {};
   for (const name of Object.keys(cfg.sfx)) {
     const h = lv.match(new RegExp(`\\b${name}\\b[^.]*?decay held to\\s+(\\d+(?:\\.\\d+)?)\\s*dB/s(?:\\s+from\\s+(\\d+(?:\\.\\d+)?)\\s*s)?(?:[^.]*?lift at most\\s+(\\d+(?:\\.\\d+)?)\\s*dB)?`, 'i'));
     if (h) cfg.levels.sfxHold[name] = { rate: Number(h[1]), from: h[2] != null ? Number(h[2]) : 0.5, maxLift: h[3] != null ? Number(h[3]) : 30 };
-    const d = lv.match(new RegExp(`\\b${name}\\b[^.\\n]*?ducked\\s+(\\d+(?:\\.\\d+)?)\\s*dB under`, 'i'));
-    if (d) cfg.levels.sfxDuck[name] = Number(d[1]);
+    const d = lv.match(new RegExp(`\\b${name}\\b[^.\\n]*?ducked\\s+(\\d+(?:\\.\\d+)?)\\s*dB under[^.\\n]*`, 'i'));
+    if (d) {
+      const atk = d[0].match(/(\d+)\s*ms attack/i);
+      const hold = d[0].match(/(\d+)\s*ms hold/i);
+      const keyDb = d[0].match(/key\s+(-\d+(?:\.\d+)?)\s*dBFS/i);
+      // "..., 15 dB more in the speech band 300-3000 Hz (20 ms attack, 60 ms release)": a deeper
+      // duck in that band only, with its own attack and release when given.
+      const band = d[0].match(/(\d+(?:\.\d+)?)\s*dB more in the speech band\s+(\d+)\s*-\s*(\d+)\s*Hz(?:\s*\(([^)]*)\))?/i);
+      const bandAtk = band?.[4]?.match(/(\d+)\s*ms attack/i);
+      const bandRel = band?.[4]?.match(/(\d+)\s*ms release/i);
+      const rel = d[0].replace(band?.[0] || '\u0000', '').match(/(\d+)\s*ms release/i);
+      cfg.levels.sfxDuck[name] = { db: Number(d[1]), attackMs: atk ? Number(atk[1]) : null, releaseMs: rel ? Number(rel[1]) : null, holdMs: hold ? Number(hold[1]) : null, keyDb: keyDb ? Number(keyDb[1]) : null, ...(band ? { band: { extraDb: Number(band[1]), lo: Number(band[2]), hi: Number(band[3]), attackMs: bandAtk ? Number(bandAtk[1]) : null, releaseMs: bandRel ? Number(bandRel[1]) : null } } : {}) };
+    }
   }
+  // "Narrator compressed 4:1 above -24 dBFS (5 ms attack, 120 ms release)": a compressor on that
+  // voice role only; the role's peak level is set after it.
+  cfg.levels.voiceComp = {};
+  for (const m of lv.matchAll(/(?:^|\.\s+|\n)([A-Za-z][\w ]*?)\s+compressed\s+(\d+(?:\.\d+)?):1 above\s+(-\d+(?:\.\d+)?)\s*dBFS([^.\n]*)/gi)) {
+    const atk = m[4].match(/(\d+)\s*ms attack/i);
+    const rel = m[4].match(/(\d+)\s*ms release/i);
+    cfg.levels.voiceComp[m[1].trim().toLowerCase()] = { ratio: Number(m[2]), thresholdDb: Number(m[3]), attackMs: atk ? Number(atk[1]) : 5, releaseMs: rel ? Number(rel[1]) : 120 };
+  }
+  // "Narrator low shelf +2 dB at 150 Hz": a low-shelf on that voice role only, before its peak level.
+  cfg.levels.voiceShelf = {};
+  for (const m of lv.matchAll(/(?:^|\.\s+|\n)([A-Za-z][\w ]*?)\s+low shelf\s+([+-]?\d+(?:\.\d+)?)\s*dB at\s+(\d+(?:\.\d+)?)\s*Hz/gi)) cfg.levels.voiceShelf[m[1].trim().toLowerCase()] = { gainDb: Number(m[2]), freq: Number(m[3]) };
   const duck = lv.match(/A4\b[^.]*?ducked\s+(\d+(?:\.\d+)?)\s*dB/i) || (Object.keys(cfg.levels.sfxDuck).length ? null : lv.match(/ducked\s+(\d+(?:\.\d+)?)\s*dB/i));
   if (duck) cfg.levels.duckDb = Number(duck[1]);
   if (!lv.trim()) assume('mix levels', 'no Mix levels section; using the preset levels');
@@ -459,6 +485,10 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
   // "The last 3 s before the end card stay within 8 LU of the midnight_strike (momentary loudness)."
   const tail = qa.match(/last\s+(\d+(?:\.\d+)?)\s*s before the end card[^\n]*?within\s+(\d+(?:\.\d+)?)\s*LU of the\s+`?([\w-]+)`?/i);
   cfg.qa.tail = tail ? { seconds: Number(tail[1]), lu: Number(tail[2]), sfx: tail[3] } : null;
+  // "The narrator reads over the midnight_strike: speech band 300-3000 Hz of the line at least
+  // 6 dB above the strike in the line's window."
+  const sb = qa.match(/The\s+(\w+)\s+reads over the\s+`?([\w-]+)`?[^\n]*?speech band\s+(\d+)\s*-\s*(\d+)\s*Hz[^\n]*?at least\s+(\d+(?:\.\d+)?)\s*dB above/i);
+  cfg.qa.speechBand = sb ? { role: sb[1].toLowerCase(), sfx: sb[2], lo: Number(sb[3]), hi: Number(sb[4]), minDb: Number(sb[5]) } : null;
   cfg.discardClipAudio = !/keep (the )?clip audio/i.test(text);
   return cfg;
 }
