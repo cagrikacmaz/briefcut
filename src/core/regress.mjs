@@ -24,7 +24,8 @@ export async function regress({ filmDir, outDir, log, offline = true }) {
     fs.cpSync(path.join(filmDir, rel), path.join(mirror, rel), { recursive: true });
     copied.push(rel.replace(/\\/g, '/'));
   };
-  for (const f of fs.readdirSync(filmDir)) if (/BRIEF\.md$|_FIX\d+\.md$|^pronunciations\.json$|^OPEN_QUESTIONS\.md$/i.test(f)) copy(f);
+  // Everything the cut reads besides the key: brief, FIX passes, overrides, pronunciations.
+  for (const f of fs.readdirSync(filmDir)) if (/BRIEF\.md$|_FIX\d+\.md$|^OVERRIDES\.md$|^pronunciations\.json$|^OPEN_QUESTIONS\.md$/i.test(f)) copy(f);
   copy('clips');
   copy('audio');
   copy(path.join('out', 'cues.md'));
@@ -70,7 +71,13 @@ export async function regress({ filmDir, outDir, log, offline = true }) {
     const t = fs.readFileSync(file, 'utf8');
     const s = t.indexOf(heading);
     if (s < 0) return [];
-    return t.slice(s).split(/\r?\n/).slice(2).filter((l, i, arr) => l.startsWith('|') && arr.slice(0, i).every((x) => x.startsWith('|') || !x.trim())).map((l) => l.split('|').slice(1, -1).map((c) => c.trim()));
+    // The first pipe table after the heading: header, separator, then its contiguous rows.
+    const lines = t.slice(s).split(/\r?\n/);
+    const h = lines.findIndex((l) => l.startsWith('|'));
+    if (h < 0) return [];
+    const rows = [];
+    for (let i = h + 2; i < lines.length && lines[i].startsWith('|'); i++) rows.push(lines[i].split('|').slice(1, -1).map((c) => c.trim()));
+    return rows;
   };
   const cmp = (heading, cols) => {
     const x = table(path.join(filmDir, 'out', 'REPORT.md'), heading);
