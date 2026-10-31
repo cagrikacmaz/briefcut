@@ -4,18 +4,28 @@
     "sound": "sfx:gear_seat",
     "event": "gear_drop",
     "status": "placed",
-    "picture": 3.2916666666666665,
-    "target": 3.2916666666666665,
+    "picture": 4,
+    "target": 4,
     "frameError": 0,
     "file": "sfx_gear_seat_1.mp3"
+  },
+  "3": {
+    "scene": "S2_GEARS",
+    "sound": "sfx:escapement",
+    "event": "step_1",
+    "status": "placed",
+    "picture": 4.5,
+    "target": 4.5,
+    "frameError": 0,
+    "file": "sfx_escapement_1.mp3"
   },
   "4": {
     "scene": "S3_CUCKOO",
     "sound": "sfx:cuckoo_door",
     "event": "bird_1",
     "status": "placed",
-    "picture": 6.708333333333333,
-    "target": 6.608333333333333,
+    "picture": 5.208333333333333,
+    "target": 5.108333333333333,
     "frameError": 0,
     "file": "sfx_cuckoo_door_1.mp3"
   },
@@ -24,8 +34,8 @@
     "sound": "sfx:wing_flutter",
     "event": "fly_off",
     "status": "placed",
-    "picture": 10.75,
-    "target": 10.75,
+    "picture": 9.25,
+    "target": 9.25,
     "frameError": 0,
     "file": "sfx_wing_flutter_1.mp3"
   },
@@ -34,8 +44,8 @@
     "sound": "sfx:midnight_strike",
     "event": "midnight",
     "status": "placed",
-    "picture": 11,
-    "target": 11,
+    "picture": 9.5,
+    "target": 9.5,
     "frameError": 0,
     "file": "sfx_midnight_strike_1.mp3"
   },
@@ -44,10 +54,20 @@
     "sound": "Narrator",
     "event": "midnight",
     "status": "placed",
-    "picture": 11,
-    "target": 12.8,
+    "picture": 9.5,
+    "target": 11,
     "frameError": 0,
     "file": "vo_8_narrator.mp3"
+  },
+  "9": {
+    "scene": "END_CARD",
+    "sound": "sfx:escapement",
+    "event": "text_in",
+    "status": "placed",
+    "picture": 14.25,
+    "target": 14.25,
+    "frameError": 0,
+    "file": "sfx_escapement_2.mp3"
   },
   "1.1": {
     "scene": "S1_HAMMER",
@@ -119,73 +139,13 @@
     "frameError": 0,
     "file": "sfx_hammer_tap_1.mp3"
   },
-  "3.1": {
-    "scene": "S2_GEARS",
-    "sound": "sfx:escapement",
-    "event": "step_1",
-    "status": "placed",
-    "picture": 3.5,
-    "target": 3.5,
-    "frameError": 0,
-    "file": "sfx_escapement_1.mp3"
-  },
-  "3.2": {
-    "scene": "S2_GEARS",
-    "sound": "sfx:escapement",
-    "event": "step_2",
-    "status": "placed",
-    "picture": 4,
-    "target": 4,
-    "frameError": 0,
-    "file": "sfx_escapement_2.mp3"
-  },
-  "3.3": {
-    "scene": "S2_GEARS",
-    "sound": "sfx:escapement",
-    "event": "step_3",
-    "status": "placed",
-    "picture": 4.5,
-    "target": 4.5,
-    "frameError": 0,
-    "file": "sfx_escapement_3.mp3"
-  },
-  "3.4": {
-    "scene": "S2_GEARS",
-    "sound": "sfx:escapement",
-    "event": "step_4",
-    "status": "placed",
-    "picture": 5,
-    "target": 5,
-    "frameError": 0,
-    "file": "sfx_escapement_1.mp3"
-  },
-  "3.5": {
-    "scene": "S2_GEARS",
-    "sound": "sfx:escapement",
-    "event": "step_5",
-    "status": "placed",
-    "picture": 5.5,
-    "target": 5.5,
-    "frameError": 0,
-    "file": "sfx_escapement_2.mp3"
-  },
-  "3.6": {
-    "scene": "S2_GEARS",
-    "sound": "sfx:escapement",
-    "event": "step_6",
-    "status": "placed",
-    "picture": 6,
-    "target": 6,
-    "frameError": 0,
-    "file": "sfx_escapement_3.mp3"
-  },
   "5.1": {
     "scene": "S3_CUCKOO",
     "sound": "sfx:cuckoo_call",
     "event": "bird_1",
     "status": "placed",
-    "picture": 6.708333333333333,
-    "target": 6.708333333333333,
+    "picture": 5.208333333333333,
+    "target": 5.208333333333333,
     "frameError": 0,
     "file": "sfx_cuckoo_call_1.mp3"
   },
@@ -194,8 +154,8 @@
     "sound": "sfx:cuckoo_call",
     "event": "bird_2",
     "status": "placed",
-    "picture": 7.875,
-    "target": 7.875,
+    "picture": 6.375,
+    "target": 6.375,
     "frameError": 0,
     "file": "sfx_cuckoo_call_1.mp3"
   }

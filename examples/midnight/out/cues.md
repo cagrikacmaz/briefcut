@@ -28,13 +28,10 @@ gear_drop: 2.042   (sheet 2.0-2.5; 24 fps f49: the gear drops onto its post, the
 No discrete escapement step is visible: after f51 the balance wheel turns continuously, out of focus,
 and the motion inside its region stays flat (2-4) with no regular peaks. Closest reading: the regular
 pulse the brief asks for (about two steps per second), placed on the music's beats, which are exactly
-0.5 s apart (120.00 BPM detected) and fall on these source frames while S2 plays from timeline 3.0 s.
-step_1: not found, closest 2.250   (f54, beat at timeline 3.5 s)
-step_2: not found, closest 2.750   (f66, beat at timeline 4.0 s)
-step_3: not found, closest 3.250   (f78, beat at timeline 4.5 s)
-step_4: not found, closest 3.750   (f90, beat at timeline 5.0 s)
-step_5: not found, closest 4.250   (f102, beat at timeline 5.5 s)
-step_6: not found, closest 4.750   (f114, beat at timeline 6.0 s)
+0.5 s apart (120.00 BPM detected). v2 (FIX01) plays S2 from 1.042 to 3.042 (timeline 3.0-5.0 s): the
+gear seats on the beat at timeline 4.0 s and the only beat after it inside the shot is 4.5 s.
+(v1 played S2 from 1.750 and had six steps at 2.250-4.750; that sheet is kept in out/v1/cues.md.)
+step_1: not found, closest 2.542   (f61, beat at timeline 4.5 s)
 
 ## S3_CUCKOO
 in: 0.375
@@ -52,3 +49,4 @@ cut: none
 The hands never meet at XII (minute at XII, hour near V). The strike lands on the hard cut to the dial.
 midnight: start   (first frame of S4 in the edit)
 pullback: 1.000   (sheet ~1.4; 24 fps f24: the dial starts to shrink on this frame; motion 0.4 -> 1.0 -> 1.8)
+pullback_end: 4.083   (the pull-back eases out; f98 is the first frame whose motion falls below a third of its peak, 16.8 at f59 -> 5.6; on the sheet 4.0-5.0 s show the same framing. FIX01 ends S4 0.5 s later, 4.583)

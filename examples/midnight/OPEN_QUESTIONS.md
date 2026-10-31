@@ -12,6 +12,16 @@ What the brief did not settle, and what was decided instead of asking. Edit the 
 - **S3 length**: 4.5 s instead of the aimed 4.0 s, so the fly-off (f111) and the empty dial after it (f114) are in the shot.
 - **Colour**: the default preset applies no grade and no shot match; the four clips keep their own night looks (warm workshop, brass macro, wall, cool hall).
 
+## Decided by the agent for v2 (MIDNIGHT_FIX01.md)
+
+- **S2 range v2**: 1.042-3.042 s. The owner asked for S2 to end about 1 s after gear_drop (2.042) with the 2.0 s minimum shot, so the shot starts 1.0 s before the drop, on the tweezers lowering the gear, instead of ending later on the static hold. The gear seats on the beat at timeline 4.0 s.
+- **S2 step v2**: one escapement tick at 2.542 s (the only beat after the gear seats inside the shot, timeline 4.5 s), still flagged not found. The v1 sheet is kept as out/v1/cues.md.
+- **S4 end**: the pull-back eases out; its stop is taken as the first frame whose motion falls below a third of its peak (f98, 4.083 s). Out point 4.583 s (stop + 0.5 s), which briefcut snapped 2 frames to 4.500 s, on the beat at 14.0 s: the wide shot ends 0.42 s after the stop. Length 15.5 s, the bottom of the 15.5-16.5 s target.
+- **Strike ring**: the brief allowed the strike's own decay at a higher level or a second long bell take; the own decay needs no new paid generation, so the take's tail is held to fall no faster than 1.2 dB/s (at most 36 dB of lift) and ducked 4 dB under the narrator. A first render at 1.5 dB/s with a 6 dB duck dipped to 9.35 LU below the strike at 12.2 s, just after the line; 1.2 dB/s with the music's 4 dB duck stays within 7.05 LU.
+- **End tick**: an escapement take at -4 dB (-13 dBFS peak, against -9 for the other ticks) on card frame 6, where the text is fully in (0.25 s fade).
+- **End card line 2**: 5.4% of the frame height, 104 px against 50 px in v1 (2.08x); it spans about 80% of the frame width, so it was not made larger.
+- **Social true peak**: the meter prints true peak to 0.1 dB. The first social render that read -1.0 dBTP had a sample peak of -0.97 dBFS, so the true peak was above -1. briefcut now counts the sample peak in the true-peak rule; the social masters settled at a -4.5 dBTP limiter ceiling (TP -1.6 dBTP, sample peak -1.56 dBFS, LRA 1.3 LU).
+
 <!-- briefcut:start -->
 ## Decided by briefcut
 

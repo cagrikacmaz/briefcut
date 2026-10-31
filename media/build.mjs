@@ -1,7 +1,8 @@
 // Builds the README visuals in media/ from a rendered film folder:
 //   node media/build.mjs <filmDir>
-// pipeline.png (the loop), midnight-preview.mp4 + .gif (the strongest 7.75 s), sync_check.jpg,
-// take-sheets.jpg (every downloaded take's 2 fps sheet, used and rejected, labelled).
+// pipeline.png (the loop, for social cards), midnight-preview.mp4 (the whole film) + .gif (its last
+// 7.75 s), sync_check.jpg, take-sheets.jpg (every downloaded take's 2 fps sheet, used and
+// rejected, labelled).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,15 +70,18 @@ async function pipelinePng() {
   return out;
 }
 
+// The whole film from the newest social master (-10 LUFS: a README player does not normalize),
+// else the newest master, at 720x1280; the silent GIF fallback is its last 7.75 s.
 async function preview() {
-  const master = fs.readdirSync(path.join(film, 'out')).find((n) => /_master(_v\d+)?\.mp4$/.test(n));
-  const src = path.join(film, 'out', master);
+  const names = fs.readdirSync(path.join(film, 'out'));
+  const newest = (re) => names.filter((n) => re.test(n)).sort((a, b) => Number(b.match(/_v(\d+)\.mp4$/)?.[1] || 1) - Number(a.match(/_v(\d+)\.mp4$/)?.[1] || 1))[0];
+  const src = path.join(film, 'out', newest(/^[A-Z0-9]+_social(_v\d+)?\.mp4$/) || newest(/_master(_v\d+)?\.mp4$/));
   const mp4 = path.join(MEDIA, 'midnight-preview.mp4');
-  await ffmpeg(['-y', '-v', 'error', '-ss', '10.0', '-t', '7.75', '-i', src, '-vf', 'scale=720:1280:flags=lanczos', '-c:v', 'libx264', '-preset', 'slow', '-crf', '24', '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4]);
+  await ffmpeg(['-y', '-v', 'error', '-i', src, '-vf', 'scale=720:1280:flags=lanczos', '-c:v', 'libx264', '-preset', 'slow', '-crf', '24', '-pix_fmt', 'yuv420p', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mp4]);
   const gif = path.join(MEDIA, 'midnight-preview.gif');
   const pal = path.join(work, 'pal.png');
-  await ffmpeg(['-y', '-v', 'error', '-ss', '0', '-t', '7.75', '-i', mp4, '-vf', 'fps=12,scale=270:-2:flags=lanczos,palettegen=max_colors=128', pal]);
-  await ffmpeg(['-y', '-v', 'error', '-t', '7.75', '-i', mp4, '-i', pal, '-lavfi', 'fps=12,scale=270:-2:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=4', gif]);
+  await ffmpeg(['-y', '-v', 'error', '-sseof', '-7.75', '-i', mp4, '-vf', 'fps=12,scale=270:-2:flags=lanczos,palettegen=max_colors=128', pal]);
+  await ffmpeg(['-y', '-v', 'error', '-sseof', '-7.75', '-i', mp4, '-i', pal, '-lavfi', 'fps=12,scale=270:-2:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=4', gif]);
   return [mp4, gif];
 }
 
