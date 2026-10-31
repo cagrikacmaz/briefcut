@@ -1,0 +1,38 @@
+{
+  "$comment": "Rules of a toddler learning channel (ages 1-2) that has rendered every one of its films with this pipeline. Voice caps keep lines short for small children; the grade and shot match make clips from a generator look like one show.",
+  "extends": "default",
+  "width": 1920,
+  "height": 1080,
+  "durationQa": [22, 27],
+  "shotRules": { "minShot": 2.5, "minDeadCut": 1.5 },
+  "video": {
+    "grade": "eq=saturation=1.35:contrast=1.06:brightness=0.01,colorbalance=rs=0.04:bs=-0.04:rm=0.03:bm=-0.03,unsharp=5:5:0.4",
+    "match": true,
+    "watermark": { "x": 48, "y": 40, "width": 160, "widthWide": 240, "opacity": 0.7 }
+  },
+  "tts": {
+    "model": "eleven_v3",
+    "settings": { "stability": 0.35, "similarity_boost": 0.85, "style": 0.2, "use_speaker_boost": true },
+    "forbidRobust": true
+  },
+  "voiceRules": {
+    "maxLeadDelay": 0.3,
+    "supportNonVerbalCap": 1.2,
+    "supportVerbalCap": 1.5,
+    "leadSingleWordCap": 0.8,
+    "capRetakes": 3,
+    "maxLeadIn": 0.4,
+    "maxInnerPause": 0.5,
+    "keepPause": 0.3,
+    "supportOverlapDb": -4,
+    "questionVoicesAreLeads": true,
+    "maxEndRiseSemitones": 2
+  },
+  "levels": { "voicePeak": -6, "sfxPeak": -8, "musicRms": -22, "duckDb": 4, "duckMaxDb": 6 },
+  "music": { "nudgeFrames": 3, "fadeOut": 0.3 },
+  "ending": {
+    "$comment": "Default ending: the lead says goodbye, the child character answers with a giggle, then the brand sting; the picture ends 0.5 s after the sting.",
+    "pictureAfterSting": 0.5
+  },
+  "qa": { "maxSilence": 1.5, "silenceFloorDb": -45 }
+}
