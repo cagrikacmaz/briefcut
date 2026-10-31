@@ -19,7 +19,7 @@ export function readCueSheet(name, text) {
     // "bird_1: not found, closest moment 0.50" reads as "bird_1: 0.50 (not found)".
     const nf = line.match(/^([A-Za-z][\w '’-]*?)\s*:\s*not found\D*?(-?\d+(?:\.\d+)?)/i);
     if (nf) line = `${nf[1]}: ${nf[2]} (not found)`;
-    const m = line.match(/^([A-Za-z][\w '’-]*?)\s*[:|]\s*(none|start|-?\d+(?:\.\d+)?)(?:\s*(?:-|–)\s*(\d+(?:\.\d+)?))?\s*s?\b/i);
+    const m = line.match(/^([A-Za-z][\w '’-]*?(?:\s\d+\.\d+)?)\s*[:|]\s*(none|start|-?\d+(?:\.\d+)?)(?:\s*(?:-|–)\s*(\d+(?:\.\d+)?))?\s*s?\b/i);
     if (!m) continue;
     const key = m[1].trim().toLowerCase();
     if (key === 'cut') cut = m[2].toLowerCase() === 'none' ? null : [Number(m[2]), Number(m[3])];

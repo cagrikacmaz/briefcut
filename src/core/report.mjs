@@ -102,7 +102,7 @@ export function writeSummary(file, r) {
     `2. Duration ${t3(qa.duration)} s (${qa.frames} frames); loudness ${f2(loud.I)} LUFS, true peak ${f2(loud.TP)} dBTP.`,
     `3. Edit: ${r.entries.map((e) => `${e.source} ${t3((e.outF - e.inF) / cfg.fps)} s`).join(', ')}.`,
     `4. Cues: ${r.cues.filter((c) => c.status === 'placed').length} placed, ${r.cues.filter((c) => c.status !== 'placed').length} dropped; ${hits.length} effects, worst sync error ${f2(qa.worstFrameError)} frames (tolerance ±${cfg.qa.syncFrames}).`,
-    `5. Events not found: ${r.flags.length ? r.flags.join('; ') : 'none'}.`,
+    `5. Flagged for the owner: ${r.flags.length ? `${r.flags.length} item(s) on top of REPORT.md (${Object.entries(r.built.missing).filter(([, l]) => l.length).map(([k, l]) => `${k} ${l.length} event(s) not found`).concat(r.flags.filter((x) => /OVERRIDES/.test(x)).length ? ['overrides'] : []).join('; ')})` : 'none'}.`,
     `6. Music: ${r.music ? `take ${r.music.pick.used} of ${r.music.pick.rows.length}, ${f2(r.grid.bpm)} BPM${r.stopAt != null ? `, hard stop at ${t3(r.stopAt)} s` : ''}` : 'none'}.`,
     `7. Voices: ${[...new Set(r.cues.filter((c) => c.voiceUsed).map((c) => `${c.voice} = ${c.voiceUsed}`))].join(', ') || 'none'}.`,
     `8. Audio: ${making.characters} TTS characters, ${making.sfxGenerations} SFX, ${making.musicGenerations} music, ${making.ambienceGenerations} ambience generations (${making.generated.length} new this run), est. ${making.estUsd.toFixed(2)} USD.`,

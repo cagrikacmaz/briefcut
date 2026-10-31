@@ -117,7 +117,7 @@ export async function cutFilm(opts) {
   const cueFile = path.join(outDir, 'cues.md');
   const built = buildEntries(cfg, clips, cueFile, log);
   const cues = expandCues(cfg, built.events, log);
-  for (const [k, list] of Object.entries(built.missing)) for (const ev of list) flags.push(`${k} ${ev}: not found on screen; placed on the closest moment that reads the same (see out/cues.md)`);
+  for (const [k, list] of Object.entries(built.missing)) if (list.length) flags.push(`${k} ${list.join(', ')}: not found on screen; placed on the closest moment that reads the same (see out/cues.md)`);
 
   // Audio (cached; generated only when missing and not offline).
   const providerName = opts.mock ? 'mock' : opts.audioProvider || cfg.tts.provider;
