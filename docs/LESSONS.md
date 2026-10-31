@@ -431,6 +431,12 @@ Each of these became a QA row after a film shipped without it:
 - **Rule:** master each loudness target separately from the same premix, step the ceiling down as far as -5 dBTP, and measure the exported file, never the WAV.
 - **Check:** one QA row per export with integrated loudness, true peak, sample peak, the ceiling used and the loudnorm mode.
 
+### 70. A held bell buried the line after it
+- **Symptom:** the narrator sounded thin and quiet on a phone; measured in the speech band (300-3000 Hz), the line sat 1 dB under the bell.
+- **Cause:** the bell's tail was held near its peak for the ending, and a broadband duck took it down by the same amount at every frequency, while a phone reproduces almost nothing but the speech band. The line's second half was also 10-20 dB under its first word.
+- **Rule:** duck the effect deeper in the speech band only, with a fast attack and release so the band clears under the first word and returns when the line ends; compress the voice so its end is as present as its start; key the duck on the line, not on its breath tail.
+- **Check:** a QA row with the line's speech-band level over the effect's, from the stems, in the line's window (threshold 6 dB), next to the ending-energy row, since the two pull against each other.
+
 ---
 
 ## Defaults that came out of this

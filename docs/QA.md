@@ -13,6 +13,7 @@ and stays FAIL; the film is still exported so the owner can see what failed. Cod
 | Sync | each sound's position in the master: 200 ms of the premix from its start, located in the master by cross-correlation (±125 ms); error = heard - target in frames, within the brief's tolerance (±1 frame). Effects are placed by their attack point, voices by their gated onset |
 | Music hard stop | peak of the music stem after the stop event + fade, scaled by the mastering gain, under -60 dBFS |
 | Loudest moment | the maximum of momentary loudness (400 ms) falls on the named hit |
+| Line over an effect | the voice role's line and the named effect as mixed (its duck included), each band-limited to the speech band (24 dB per octave edges), RMS over the line's window from its onset to its end; the voice must be the given number of dB above the effect. This is what a phone speaker reproduces |
 | Ending energy | the lowest momentary loudness (400 ms windows wholly inside the last N s before the end card) is within X LU of the named hit's highest momentary value in its first 1.5 s; the report also lists the momentary values of the film's last 5 s |
 | Hook | the first event's timeline time within the brief's limit |
 | First and last frame | mean luma of the first frame above 20 (0-255); with an end card, the last frame is dark with bright text pixels |

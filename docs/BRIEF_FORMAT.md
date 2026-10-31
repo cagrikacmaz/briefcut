@@ -80,6 +80,12 @@ Forced alignment on.
 
 Channel-style briefs can instead say ``Model `eleven_v3` `` and ``Voices by name: `A`, `B` ``.
 
+``Narrator voice by audition, lowest and fullest: `Daniel`, `Adam`, `Bill`, `Brian`.`` generates the
+role's line with every candidate (through the cache, with the request the cut will make, so the
+chosen take is reused), measures each take's fundamental and spectral centroid, and uses the voice
+that ranks lowest on both. The pick is frozen in `audio/audition_<role>.json`, the comparison is
+written to `out/AUDITION.md`, and `briefcut estimate` counts one line per candidate.
+
 **`## SFX`**: one generation per variant, cached.
 
 ```
@@ -132,7 +138,14 @@ Two optional sentences per effect, each on its own:
 `midnight_strike decay held to 1.2 dB/s from 0.5 s after its attack (lift at most 36 dB).` lifts the
 take's tail so its 50 ms envelope falls no faster than that rate (attack and peak untouched), and
 `midnight_strike ducked 4 dB under the narrator.` ducks that effect under the voice bus with the
-music duck's key and timing.
+music duck's key and timing. In parentheses it can take its own timing and key:
+`(150 ms attack, 600 ms release, 40 ms hold, key -24 dBFS)`, and after a comma a deeper duck in one
+band only: `18 dB more in the speech band 300-3000 Hz (20 ms attack, 60 ms release)` (zero-phase
+band split, so the rest of the effect keeps the broadband duck).
+
+Per voice role: `Narrator low shelf +2 dB at 150 Hz.` and
+`Narrator compressed 6:1 above -30 dBFS (5 ms attack, 80 ms release).`; the role's peak level is
+set after both.
 
 **`## End card`**: length, font paths in backticks, lines as `` `text` (large) `` /
 `` `text` (small, 60% white) `` / `` `text` (5.4% of the frame height, 60% white) ``,
@@ -146,8 +159,9 @@ line that names its own files and `I=`/`TP=`, for platforms that do not normaliz
 Each is mastered from the same premix with its own limiter pass; a `16x9` name gets the 16:9 export.
 
 **`## QA`**: the duration window, `-14 LUFS ±0.5`, `within ±1 frame`,
-`<sfx> is the loudest moment` and `The last 3 s before the end card stay within 8 LU of the <sfx>`
-become checks; every extra loudness target gets its own row. See [QA.md](QA.md).
+`<sfx> is the loudest moment`, `The last 3 s before the end card stay within 8 LU of the <sfx>` and
+`The narrator reads over the <sfx>: speech band 300-3000 Hz of the line at least 6 dB above the
+strike in the line's window` become checks; every extra loudness target gets its own row. See [QA.md](QA.md).
 
 ## The cue sheet (`out/cues.md`)
 
