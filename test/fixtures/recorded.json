@@ -1,0 +1,28 @@
+{
+  "$comment": "Response bodies in the shapes the vendors' API references document (checked 2026-10-31). IDs and URLs are made up.",
+  "elevenlabs": {
+    "voices_page1": { "voices": [{ "voice_id": "v_aaa", "name": "Daniel - Steady Broadcaster", "category": "premade" }], "has_more": true, "next_page_token": "p2" },
+    "voices_page2": { "voices": [{ "voice_id": "v_bbb", "name": "Brian", "category": "premade" }], "has_more": false, "next_page_token": null },
+    "align": { "characters": [{ "text": "R", "start": 0.31, "end": 0.35 }], "words": [{ "text": "Right", "start": 0.31, "end": 0.52, "loss": 0.1 }, { "text": "on", "start": 0.55, "end": 0.63, "loss": 0.1 }], "loss": 0.1 },
+    "subscription": { "tier": "creator", "character_count": 1200, "character_limit": 121000, "next_character_count_reset_unix": 1767225600 },
+    "error_422": { "detail": [{ "loc": ["body", "text"], "msg": "field required", "type": "missing" }] }
+  },
+  "higgsfield": {
+    "submit": { "status": "queued", "request_id": "req_123", "status_url": "https://api.higgsfield.ai/requests/req_123/status", "cancel_url": "https://api.higgsfield.ai/requests/req_123/cancel" },
+    "status_running": { "status": "in_progress", "request_id": "req_123" },
+    "status_done": { "status": "completed", "request_id": "req_123", "video": { "url": "https://cdn.example.test/req_123.mp4" }, "expires_at": "2026-11-07T00:00:00Z" },
+    "status_nsfw": { "status": "nsfw", "request_id": "req_124" },
+    "estimate": { "usd": "0.094" }
+  },
+  "fal": {
+    "submit": { "request_id": "f-1", "response_url": "https://queue.fal.run/bytedance/seedance-2.0/requests/f-1", "status_url": "https://queue.fal.run/bytedance/seedance-2.0/requests/f-1/status", "cancel_url": "https://queue.fal.run/bytedance/seedance-2.0/requests/f-1/cancel", "queue_position": 0 },
+    "status_queue": { "status": "IN_QUEUE", "queue_position": 2 },
+    "status_done": { "status": "COMPLETED", "logs": [], "metrics": { "inference_time": 41.2 } },
+    "status_failed": { "status": "COMPLETED", "error": "content policy", "error_type": "policy" },
+    "result": { "video": { "url": "https://cdn.example.test/f-1.mp4", "content_type": "video/mp4", "file_name": "out.mp4", "file_size": 123456 }, "seed": 7 }
+  },
+  "gemini": {
+    "create_background": { "id": "int_1", "status": "in_progress" },
+    "get_done": { "id": "int_1", "status": "completed", "steps": [{ "type": "model_output", "content": [{ "type": "video", "mime_type": "video/mp4", "uri": "https://generativelanguage.googleapis.com/v1beta/files/abc123" }] }] }
+  }
+}
