@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseBrief, findBrief, clipKey } from '../src/core/brief.mjs';
+import { parseBrief, findBrief, readBrief, clipKey } from '../src/core/brief.mjs';
 import { cutFilm, findClips } from '../src/core/cut.mjs';
 import { prepareAudio } from '../src/core/prepare.mjs';
 import { estimateFilm } from '../src/core/estimate.mjs';
@@ -58,7 +58,7 @@ function parseArgs(argv) {
 function load(dir, flags, log) {
   const filmDir = path.resolve(dir);
   const briefFile = findBrief(filmDir, flags.brief);
-  const cfg = parseBrief(fs.readFileSync(briefFile, 'utf8'), path.basename(briefFile), log, { preset: flags.preset });
+  const cfg = parseBrief(readBrief(briefFile).text, path.basename(briefFile), log, { preset: flags.preset });
   return { filmDir, cfg };
 }
 

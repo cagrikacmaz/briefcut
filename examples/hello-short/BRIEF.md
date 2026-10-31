@@ -81,6 +81,7 @@ A2 narrator -6 dBFS peak. A3 SFX -9 dBFS peak (boom -4 dBFS peak). A4 music -21 
 ## Export
 `out/HELLO_master.mp4`: 720x1280, 24 fps, H.264 CRF 20, x264 preset veryfast, AAC 192k 48 kHz. Two-pass loudnorm I=-14 TP=-1 LRA=11.
 Also `out/HELLO_preview_360p.mp4` and `out/HELLO_16x9.mp4`.
+For platforms that do not normalize: `out/HELLO_social.mp4` and `out/HELLO_16x9_social.mp4`, two-pass loudnorm I=-10 TP=-1 LRA=11.
 
 ## QA
 1. Duration 6-12 s.

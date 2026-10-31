@@ -81,3 +81,16 @@ test('first frame within firstEvent seconds of its event', () => {
   snapCutsToBeats(entries, cfg({ firstEvent: { event: 'tap_1', seconds: 0.5 } }), { period: 0.5, origin: 0 }, cues, nullLog());
   assert.ok(entries[0].inF >= 36 && entries[0].inF <= 40);
 });
+
+test('end card events: start and text_in are card frames, placed on the timeline after the last shot', async () => {
+  const { buildEntries, expandCues, placeCues } = await import('../src/core/edl.mjs');
+  const cfg = { fps: 24, endCard: { seconds: 1.5, fadeIn: 0.25 }, edl: [{ order: 1, source: 'END_CARD', key: 'END_CARD', kind: 'card' }], cues: [{ row: 1, key: 'END_CARD', scene: 'END_CARD', kind: 'sfx', sfxName: 'tick', voice: 'sfx:tick', events: ['text_in'], offset: 0, time: null }] };
+  const built = buildEntries(cfg, {}, null, { warn() {}, assume() {}, info() {} });
+  assert.deepEqual(built.events.END_CARD, { start: 0, text_in: 0.25 });
+  const e = built.entries[0];
+  Object.assign(e, { tlStartF: 240, tlEndF: 276 });
+  const cues = expandCues(cfg, built.events, { warn() {} });
+  placeCues(built.entries, cues, cfg, { assume() {} });
+  assert.equal(cues[0].status, 'placed');
+  assert.equal(cues[0].pictureFrame, 246);
+});

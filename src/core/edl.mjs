@@ -74,6 +74,9 @@ export function buildEntries(cfg, clips, cueFile, log) {
   for (const row of cfg.edl) {
     if (row.kind === 'card') {
       const frames = Math.round(cfg.endCard.seconds * fps);
+      // The card's own events, in card seconds: its first frame and the frame its text is fully in.
+      events[row.key] = { start: 0, text_in: Math.round(cfg.endCard.fadeIn * fps) / fps, ...(sheets[row.key]?.events || {}) };
+      missing[row.key] = [];
       entries.push({ order: row.order, orders: [row.order], source: row.source, key: row.key, kind: 'card', clip: { frames, card: true }, content: row.content, inF0: 0, outF0: frames, inF: 0, outF: frames, notes: [] });
       continue;
     }
@@ -250,7 +253,7 @@ export function placeCues(entries, cues, cfg, log) {
     let idx;
     let f;
     if (c.time === 'start') {
-      idx = entries.findIndex((e) => e.key === c.key && e.kind === 'clip');
+      idx = entries.findIndex((e) => e.key === c.key);
       f = idx >= 0 ? entries[idx].inF : null;
     } else {
       const evT = typeof c.eventTime === 'number' && !c.pinned ? c.eventTime : c.time - (c.pinned ? 0 : c.offset);
@@ -281,6 +284,7 @@ export function syncRule(c, cfg) {
   const ev = (c.event || '').toLowerCase();
   const spec = cfg.eventSpecs.find((s) => s.key === c.key && s.names.some((n) => n.toLowerCase() === ev)) || cfg.eventSpecs.find((s) => s.key === c.key && s.names.some((n) => /\d+$|\.\./.test(n) && new RegExp(`^${stem(n)}\\d+$`, 'i').test(ev)));
   if (spec) return spec.what;
+  if (c.key === 'END_CARD' && c.event === 'text_in') return 'end card text fully faded in';
   if (c.event === 'start') return 'first frame of the shot in the edit';
   return c.kind === 'voice' ? 'speaker mouth opens' : 'event frame';
 }

@@ -79,6 +79,47 @@ export function section(text, title) {
   return m ? m[1] : '';
 }
 
+// "## Title" sections of a file, in order: [{ title, body }].
+function topSections(text) {
+  const out = [];
+  const re = /^##\s+(.+?)\s*$/gm;
+  const heads = [...text.matchAll(re)];
+  heads.forEach((h, i) => out.push({ title: h[1], body: text.slice(h.index + h[0].length, i + 1 < heads.length ? heads[i + 1].index : undefined).replace(/^\r?\n/, '') }));
+  return out;
+}
+
+// FIX passes: every "## <Section>" in a FIX file replaces the brief's section whose heading starts
+// with the same words (or is appended when the brief has none). Later passes win; text outside a
+// section is a note for the reader and changes nothing.
+export function applyFixes(text, fixes) {
+  let out = text;
+  const applied = [];
+  for (const fix of fixes) {
+    for (const s of topSections(fix.text)) {
+      const want = s.title.toLowerCase();
+      const head = topSections(out).find((b) => b.title.toLowerCase().startsWith(want) || want.startsWith(b.title.toLowerCase()));
+      const block = `## ${head ? head.title : s.title}\n${s.body.trimEnd()}\n\n`;
+      if (head) {
+        const esc = head.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        out = out.replace(new RegExp(`^##\\s+${esc}\\s*\\n[\\s\\S]*?(?=^##\\s|(?![\\s\\S]))`, 'm'), () => block);
+      } else out = `${out.trimEnd()}\n\n${block}`;
+      applied.push(`${fix.name}: ${s.title}`);
+    }
+  }
+  return { text: out, applied };
+}
+
+// The brief as the pipeline reads it: the brief file with its <ID>_FIXnn.md passes applied in order.
+export function readBrief(briefFile) {
+  const dir = path.dirname(briefFile);
+  const base = fs.readFileSync(briefFile, 'utf8');
+  const id = (path.basename(briefFile).match(/^([A-Za-z0-9]+)_BRIEF/i) || base.match(/^#\s+([A-Za-z0-9]+)/m) || [])[1];
+  const fixes = id
+    ? fs.readdirSync(dir).filter((f) => new RegExp(`^${id}_FIX\\d+\\.md$`, 'i').test(f)).sort().map((f) => ({ name: f, text: fs.readFileSync(path.join(dir, f), 'utf8') }))
+    : [];
+  return { ...applyFixes(base, fixes), fixes: fixes.map((f) => f.name) };
+}
+
 // "### Name" subsections of a section body.
 export function subsections(body) {
   const out = [];
@@ -268,6 +309,8 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
       time: num(at),
       events: num(at) == null ? parseEventList(at) : [],
       offset: num(col(r, 'offset').replace(/^\+/, '')) ?? 0,
+      // Optional "Gain" column: dB on top of the bus level, for this row only.
+      gain: num(col(r, 'gain').replace(/^\+/, '').replace(/\s*dB$/i, '')) ?? 0,
     };
   });
   for (const c of cfg.cues) {
@@ -340,7 +383,18 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
     const m = lv.match(new RegExp(`\\b${name}\\b\\s+(-?[\\d.]+)\\s*dBFS\\s*peak`, 'i'));
     if (m) cfg.levels.sfxPeakByName[name] = Number(m[1]);
   }
-  const duck = lv.match(/ducked\s+(\d+(?:\.\d+)?)\s*dB/i);
+  // "midnight_strike decay held to 1.5 dB/s from 0.5 s after its attack (lift at most 30 dB)":
+  // the take's tail is lifted so it falls no faster than that rate. "<name> ducked 6 dB under the
+  // narrator": that effect is ducked under the voice bus like the music.
+  cfg.levels.sfxHold = {};
+  cfg.levels.sfxDuck = {};
+  for (const name of Object.keys(cfg.sfx)) {
+    const h = lv.match(new RegExp(`\\b${name}\\b[^.]*?decay held to\\s+(\\d+(?:\\.\\d+)?)\\s*dB/s(?:\\s+from\\s+(\\d+(?:\\.\\d+)?)\\s*s)?(?:[^.]*?lift at most\\s+(\\d+(?:\\.\\d+)?)\\s*dB)?`, 'i'));
+    if (h) cfg.levels.sfxHold[name] = { rate: Number(h[1]), from: h[2] != null ? Number(h[2]) : 0.5, maxLift: h[3] != null ? Number(h[3]) : 30 };
+    const d = lv.match(new RegExp(`\\b${name}\\b[^.\\n]*?ducked\\s+(\\d+(?:\\.\\d+)?)\\s*dB under`, 'i'));
+    if (d) cfg.levels.sfxDuck[name] = Number(d[1]);
+  }
+  const duck = lv.match(/A4\b[^.]*?ducked\s+(\d+(?:\.\d+)?)\s*dB/i) || (Object.keys(cfg.levels.sfxDuck).length ? null : lv.match(/ducked\s+(\d+(?:\.\d+)?)\s*dB/i));
   if (duck) cfg.levels.duckDb = Number(duck[1]);
   if (!lv.trim()) assume('mix levels', 'no Mix levels section; using the preset levels');
 
@@ -355,7 +409,8 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
     for (const m of ec.matchAll(/`([^`]+)`\s*\(([^)]*)\)/g)) {
       if (/\.(ttf|otf|ttc)$/i.test(m[1])) continue;
       const opacity = m[2].match(/(\d+)%\s*white/i);
-      cfg.endCard.lines.push({ text: m[1], size: /large/i.test(m[2]) ? 'large' : 'small', opacity: opacity ? Number(opacity[1]) / 100 : 1 });
+      const pct = m[2].match(/(\d+(?:\.\d+)?)%\s*of the (?:frame )?height/i);
+      cfg.endCard.lines.push({ text: m[1], size: pct ? `${pct[1]}%` : /large/i.test(m[2]) ? 'large' : 'small', heightPct: pct ? Number(pct[1]) : null, opacity: opacity ? Number(opacity[1]) / 100 : 1 });
     }
     const fi = ec.match(/fades? in over\s+(\d+(?:\.\d+)?)\s*s/i);
     if (fi) cfg.endCard.fadeIn = Number(fi[1]);
@@ -377,16 +432,33 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
   if (crf) cfg.export.crf = Number(crf[1]);
   const aac = exp.match(/AAC\s+(\d+)k\s+(\d+)\s*kHz/i);
   if (aac) ((cfg.export.aacKbps = Number(aac[1])), (cfg.export.sampleRate = Number(aac[2]) * 1000));
-  const ln = exp.match(/I=(-?\d+(?:\.\d+)?)\s+TP=(-?\d+(?:\.\d+)?)\s+LRA=(\d+(?:\.\d+)?)/i);
-  if (ln) Object.assign(cfg.loudness, { I: Number(ln[1]), TP: Number(ln[2]), LRA: Number(ln[3]) });
+  const LN = /I=(-?\d+(?:\.\d+)?)\s+TP=(-?\d+(?:\.\d+)?)(?:\s+LRA=(\d+(?:\.\d+)?))?/i;
+  const lines = exp.split(/\r?\n/);
+  const masterLine = lines.find((l) => l.includes(`out/${cfg.export.master}`) && LN.test(l));
+  const ln = (masterLine || lines.find((l) => LN.test(l) && !/`out\/[^`]+\.mp4`/i.test(l.replace(`out/${cfg.export.master}`, ''))) || '').match(LN);
+  if (ln) Object.assign(cfg.loudness, { I: Number(ln[1]), TP: Number(ln[2]), ...(ln[3] ? { LRA: Number(ln[3]) } : {}) });
   const tol = (qa + text).match(/(-?\d+)\s*LUFS\s*±\s*(\d+(?:\.\d+)?)/i);
   if (tol) cfg.loudness.tolerance = Number(tol[2]);
+  // A second loudness target per export: a line naming other files and its own I= TP=, e.g.
+  // "`out/X_social.mp4` and `out/X_16x9_social.mp4`: two-pass loudnorm I=-10 TP=-1 LRA=11".
+  // Each file is mastered from the same mix; a 16x9 name gets the 16:9 export.
+  cfg.export.extra = [];
+  for (const l of lines) {
+    const m = l.match(LN);
+    if (!m || l === masterLine) continue;
+    const files = [...l.matchAll(/`out\/([^`]+\.mp4)`/gi)].map((x) => x[1]).filter((f) => ![cfg.export.master, cfg.export.preview, cfg.export.wide].includes(f));
+    if (!files.length) continue;
+    cfg.export.extra.push({ files: files.map((f) => ({ name: f, wide: /16x9/i.test(f) })), loudness: { ...cfg.loudness, I: Number(m[1]), TP: Number(m[2]), ...(m[3] ? { LRA: Number(m[3]) } : {}) } });
+  }
   const preset = exp.match(/x264 preset\s+`?(\w+)`?/i);
   if (preset) cfg.export.x264Preset = preset[1];
   const syncTol = qa.match(/within\s*±\s*(\d+)\s*frames?/i);
   if (syncTol) cfg.qa.syncFrames = Number(syncTol[1]);
   if (/source clips?/i.test(qa) && /no audio/i.test(qa)) cfg.qa.noSourceAudio = true;
   cfg.qa.loudestSfx = Object.keys(cfg.sfx).find((n) => new RegExp(`${n}\\b[^\\n]*loudest moment`, 'i').test(qa + lv)) || null;
+  // "The last 3 s before the end card stay within 8 LU of the midnight_strike (momentary loudness)."
+  const tail = qa.match(/last\s+(\d+(?:\.\d+)?)\s*s before the end card[^\n]*?within\s+(\d+(?:\.\d+)?)\s*LU of the\s+`?([\w-]+)`?/i);
+  cfg.qa.tail = tail ? { seconds: Number(tail[1]), lu: Number(tail[2]), sfx: tail[3] } : null;
   cfg.discardClipAudio = !/keep (the )?clip audio/i.test(text);
   return cfg;
 }

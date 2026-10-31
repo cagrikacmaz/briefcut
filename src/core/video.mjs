@@ -67,7 +67,7 @@ export function cardChain(cfg, workDir) {
   const parts = [];
   if (textOk() && ec.lines.length) {
     const H = cfg.height;
-    const sizes = ec.lines.map((l) => Math.round((l.size === 'large' ? 0.06 : 0.026) * Math.min(H, cfg.width * 1.78)));
+    const sizes = ec.lines.map((l) => Math.round((l.heightPct != null ? l.heightPct / 100 : l.size === 'large' ? 0.06 : 0.026) * Math.min(H, cfg.width * 1.78)));
     const gap = Math.round(sizes[0] * 0.35);
     const total = sizes.reduce((a, b) => a + b, 0) + gap * (sizes.length - 1);
     let y = Math.round(H / 2 - total / 2);
