@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'briefcut-demo']);
@@ -22,7 +23,13 @@ const KEYS = [
 ];
 const PATHS = [/[A-Za-z]:[\\/]+Users[\\/]/i, /\/home\/[a-z]+\/(?!runner\b)/i, /AppData[\\/]/i, /AssetsMovie/i];
 
+// Everything git would commit (tracked plus untracked, minus ignored files such as a local
+// HANDOFF.md); a plain walk when git is not available.
 function files(dir, out = []) {
+  if (dir === ROOT) {
+    const r = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: ROOT, encoding: 'utf8' });
+    if (r.status === 0) return r.stdout.split('\0').filter((f) => f && TEXT.test(path.basename(f)) && fs.existsSync(path.join(ROOT, f))).map((f) => path.join(ROOT, f));
+  }
   for (const f of fs.readdirSync(dir)) {
     if (SKIP_DIRS.has(f)) continue;
     const p = path.join(dir, f);
