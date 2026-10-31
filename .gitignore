@@ -1,0 +1,22 @@
+# Keys: never committed. Only the placeholder file is tracked.
+.env*
+!.env.example
+
+# Agent and session state
+HANDOFF.md
+
+# Renders and generated media
+node_modules/
+briefcut-demo/
+*.mp4
+*.mov
+*.wav
+*.mp3
+!media/midnight-preview.mp4
+examples/*/out/
+examples/*/audio/
+examples/*/clips/
+
+# OS
+.DS_Store
+Thumbs.db

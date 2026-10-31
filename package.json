@@ -1,0 +1,42 @@
+{
+  "name": "briefcut",
+  "version": "0.1.0",
+  "description": "Brief in, film out. Autonomous AI video pipeline: any video model, any audio provider, frame-synced edit, QA report.",
+  "type": "module",
+  "bin": {
+    "briefcut": "bin/briefcut.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "playbooks/",
+    "examples/hello-short/",
+    "docs/",
+    "AGENTS.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"test/*.test.mjs\"",
+    "demo": "node bin/briefcut.mjs demo"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "ai-video",
+    "video-generation",
+    "elevenlabs",
+    "ffmpeg",
+    "agents",
+    "pipeline",
+    "edit",
+    "loudness"
+  ],
+  "author": "Çağrı Kaçmaz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cagrikacmaz/briefcut.git"
+  }
+}
