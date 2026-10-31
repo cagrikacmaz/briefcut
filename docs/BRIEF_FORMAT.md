@@ -55,7 +55,9 @@ mock video provider which frames flash.
 ```
 
 Empty In/Out come from the cue sheet. `END_CARD` is generated from `## End card`. Clip files are
-matched by key: `S1_HAMMER` -> `clips/S1*.mp4`.
+matched by key: `S1_HAMMER` -> `clips/S1*.mp4` (any video file: `.mp4`, `.mov`, `.m4v`, `.mkv`,
+`.webm`, `.mxf`). A still (`.jpg`, `.png`, `.webp`, `.tif`, `.bmp`) is a held shot: its In/Out give
+its length in seconds, and it is scaled to fit the frame like any clip.
 
 **`## Event detection`**: what the agent must find, per scene.
 

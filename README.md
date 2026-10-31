@@ -158,6 +158,34 @@ test-pattern clips that flash white on known frames, tones with 0.3 s of leading
 track at 120 BPM. It runs the whole loop and prints the QA result (16-20 s on a laptop). Needs
 Node.js 22+ and ffmpeg (found through `FFMPEG_DIR`, `PATH`, or WinGet on Windows).
 
+## Your own footage
+
+briefcut does not need generated clips. It was built on client films that mixed shot footage with
+generated scenes, and every step after `generate` treats a camera file like any other clip.
+
+- Put your clips in `clips/`, named by the brief's scene ids (`clips/S1_ARRIVAL.mov` or
+  `clips/S1.mp4` for scene `S1_ARRIVAL`). Stills (`.jpg`, `.png`, `.webp`, `.tif`) work too: a
+  still becomes a held shot, exactly as long as its EDL row or cue sheet says.
+- To pull footage in from a camera card or a download folder, `briefcut ingest` copies every video
+  file and still into `clips/_takes/` and writes `INGEST.md` (size, frame rate, frames, colour tags,
+  duplicates set aside); then copy the chosen take of each scene to `clips/<SCENE>.<ext>`:
+
+  ```bash
+  briefcut ingest my-film --from <folder>
+  ```
+
+- Skip `prompts` and `generate`, and run the rest as usual:
+
+  ```bash
+  briefcut sheets my-film
+  briefcut prepare my-film --max-spend 2
+  briefcut cut my-film --offline
+  ```
+
+A clip that is not at the film's size or frame rate is conformed at the cut and logged; nothing is
+upscaled or retimed. Camera audio is not used: the mix is built from the brief's voices, effects,
+music and ambience.
+
 ## Make your own film
 
 ```bash
@@ -272,12 +300,12 @@ cause, rule and check. Five of them:
 npm test
 ```
 
-53 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
+55 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
 beat snap, voice rules, onset and transient trims, loudness math, wildcard events, the music hard
-stop, held decay and effect ducking, song-block bit identity, provider contracts, a golden demo
-render (every sound within ±1 frame of its known flash, the master at -14 ±0.5 LUFS and a social
-pair at -10 ±0.5 LUFS, true peak ≤ -1 dBTP), and a privacy scan for names, local paths, anything
-that looks like a key, and assistant or model brands. CI runs them on Linux, Windows and macOS.
+stop, held decay and effect ducking, stills as held shots, song-block bit identity, provider
+contracts, a golden demo render (every sound within ±1 frame of its known flash, the master at
+-14 ±0.5 LUFS and a social pair at -10 ±0.5 LUFS, true peak ≤ -1 dBTP), and a privacy scan for
+names, local paths, anything that looks like a key, and assistant or model brands. CI runs them on Linux, Windows and macOS.
 
 ## License
 

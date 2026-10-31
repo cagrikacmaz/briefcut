@@ -24,10 +24,12 @@ First public shape of the pipeline I run in production, extracted into generic m
   cuts on the grid, silence holes, ending energy before the end card, one loudness row per extra
   target; true peak counts the decoded sample peak; momentary loudness of the last 5 s in the
   report; `sync_check.jpg`, `edl_sheet.jpg`, preview and 16:9 sheets.
+- Own footage: any video file or still in `clips/` (a still is a held shot of its EDL length);
+  `ingest --from <folder>` takes every video file and still from a card or download folder.
 - Commands: `init`, `prompts`, `generate`, `ingest`, `sheets`, `strip`, `prepare`, `cut`, `run`,
   `estimate`, `regress`, `demo`.
 - Providers: ElevenLabs (live), local and mock audio; handoff (live), Higgsfield, Gemini API
   (gemini-omni-1.1-flash), fal (Seedance 2.0) and mock video.
 - Showcase film "Midnight" (`examples/midnight/`), version 2 after one review pass (version 1 kept
-  in `examples/midnight/out/v1/`), docs, playbooks, 53 offline tests, CI on Linux, Windows and
+  in `examples/midnight/out/v1/`), docs, playbooks, 55 offline tests, CI on Linux, Windows and
   macOS.
