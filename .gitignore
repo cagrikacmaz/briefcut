@@ -13,10 +13,12 @@ briefcut-demo/
 *.wav
 *.mp3
 !media/midnight-preview.mp4
-examples/*/out/
+examples/hello-short/out/
 examples/*/audio/
-examples/*/clips/
+examples/hello-short/clips/
 
 # OS
 .DS_Store
 Thumbs.db
+ci-demo/
+media/.work/
