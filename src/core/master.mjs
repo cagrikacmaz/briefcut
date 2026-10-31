@@ -21,11 +21,11 @@ export const loudnessOk = (m, L) => Number.isFinite(m.I) && Math.abs(m.I - L.I) 
 // `bias` (LU) shifts loudnorm's target: loudnorm's own meter can read a short film 0.5-1 LU away
 // from the EBU R128 meter (ebur128) that QA uses on the export, so the caller measures the
 // export and passes the difference back in.
-export async function masterMix(premaster, workDir, L0, ceilingDb, log, { bias = 0 } = {}) {
+export async function masterMix(premaster, workDir, L0, ceilingDb, log, { bias = 0, tag = '' } = {}) {
   const L = { ...L0, I: Number((L0.I + bias).toFixed(2)) };
   const pre = await loudnormMeasure(premaster, L);
   let gain = gainToTarget(L.I, Number(pre.input_i));
-  const limited = path.join(workDir, 'mix_limited.wav');
+  const limited = path.join(workDir, `mix_limited${tag}.wav`);
   const limit = undb(ceilingDb).toFixed(5);
   let pass1;
   for (let k = 0; k < 5; k++) {
@@ -39,7 +39,7 @@ export async function masterMix(premaster, workDir, L0, ceilingDb, log, { bias =
     if (Math.abs(miss) <= 0.1 || gain + miss > 30) break;
     gain += miss;
   }
-  const out = path.join(workDir, 'mix_master.wav');
+  const out = path.join(workDir, `mix_master${tag}.wav`);
   const { stderr } = await ffmpeg([
     '-y', '-nostats', '-i', limited,
     '-af',

@@ -79,7 +79,27 @@ export function renderMix({ totalSamples, voices = [], hits = [], music = null, 
     addAt(v.bus === 'A3' ? A3 : A2, v.pcm, v.startSample);
     if (!v.noDuck) addAt(key, v.pcm, v.startSample);
   }
-  for (const h of hits) addAt(A3, h.pcm, h.startSample);
+  let duck = null;
+  const duckCurve = () => (duck ??= keyedDuck(totalSamples, key, levels));
+  // Effects with duckDb are ducked under the voice bus with the music's key and timing; the
+  // duck only lowers the level, so a ducked hit still starts on its sample.
+  const ducked = new Map();
+  for (const h of hits) {
+    if (!h.duckDb) {
+      addAt(A3, h.pcm, h.startSample, undb(h.gain || 0));
+      continue;
+    }
+    const bus = ducked.get(h.duckDb) || new Float32Array(totalSamples * CH);
+    addAt(bus, h.pcm, h.startSample, undb(h.gain || 0));
+    ducked.set(h.duckDb, bus);
+  }
+  for (const [depthDb, bus] of ducked) {
+    const d = duckCurve();
+    for (let i = 0; i < totalSamples; i++) {
+      const g = undb(-depthDb * d[i]);
+      for (let c = 0; c < CH; c++) A3[i * CH + c] += bus[i * CH + c] * g;
+    }
+  }
 
   const report = {};
   if (music) {
@@ -88,7 +108,7 @@ export function renderMix({ totalSamples, voices = [], hits = [], music = null, 
     // RMS level measured where the music plays (before the hard stop), not over the whole film.
     const [a, b] = laid.playing;
     const gain = undb(levels.musicRms) / Math.max(1e-9, rmsOf(laid.pcm, a, Math.max(a + 1, b)));
-    const duck = keyedDuck(totalSamples, key, levels);
+    const duck = duckCurve();
     const depth = Math.min(levels.duckDb, levels.duckMaxDb ?? 6);
     for (let i = 0; i < totalSamples; i++) {
       const g = gain * undb(-depth * duck[i]);

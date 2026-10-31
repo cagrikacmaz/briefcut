@@ -18,6 +18,8 @@ export function qaRows(r) {
   add(`Every sound within ±${cfg.qa.syncFrames} frame of its frame, measured on the master`, qa.syncOk, `worst ${f2(qa.worstFrameError)} frames over ${qa.syncRows.length} sounds; each sound located in the master by cross-correlation against the premix (see Cues), frames checked on sync_check.jpg`);
   if (qa.hardStopAt != null) add(`Music silent after the hard stop (A4 below -60 dBFS from ${cfg.music.hardStop.event} + ${cfg.music.hardStop.fadeMs} ms)`, qa.musicStopOk, `stop at ${t3(qa.hardStopAt)} s; A4 peak afterwards ${qa.musicAfterDb === -Infinity || qa.musicAfterDb < -200 ? 'digital silence' : `${f2(qa.musicAfterDb)} dBFS`}`);
   if (qa.loudestSfx) add(`${qa.loudestSfx} is the loudest moment (momentary loudness, 400 ms)`, qa.loudestOk, `maximum M ${f2(qa.loudest.M)} LUFS at ${t3(qa.loudest.t)} s (window end); ${qa.loudestSfx} at ${r.hits.filter((h) => h.sfxName === qa.loudestSfx).map((h) => t3(h.timeline)).join(', ')} s`);
+  for (const x of qa.extras || []) add(`\`${x.name}\`: ${x.L.I} LUFS ±${x.L.tolerance}, true peak ≤ ${x.L.TP} dBTP, no clipping`, x.ok, `I ${f2(x.loud.I)} LUFS, TP ${f2(x.loud.TP)} dBTP, LRA ${f2(x.loud.LRA)} LU (exported AAC); sample peak ${f2(x.samplePeakDb)} dBFS, ${x.clipped} samples at full scale; limiter ceiling ${x.master.ceilingDb} dBTP, loudnorm pass 2 ${x.master.pass2.normalization_type}`);
+  if (cfg.qa.tail) add(`Last ${cfg.qa.tail.seconds} s before the end card within ${cfg.qa.tail.lu} LU of ${cfg.qa.tail.sfx} (momentary loudness)`, qa.tailOk ?? false, qa.tail ? `${cfg.qa.tail.sfx} M ${f2(qa.tail.ref?.M)} LUFS at ${t3(qa.tail.ref?.t)} s; lowest M from ${t3(qa.tail.from)} to ${t3(qa.tail.to)} s ${f2(qa.tail.low.M)} LUFS at ${t3(qa.tail.low.t)} s (window end), ${f2(qa.tail.gap)} LU below` : 'no end card or no strike to measure from');
   if (cfg.firstEvent) add(`First sound (${cfg.firstEvent.event}) within the first ${cfg.firstEvent.seconds} s`, qa.firstEventOk, `${cfg.firstEvent.event} at ${t3(qa.firstEventAt)} s`);
   add(qa.lastIsCard ? 'First frame not black; last frame is the end card' : 'First and last frame not black', qa.firstOk && qa.lastOk, `mean luma first ${f2(qa.firstLuma)}, last ${f2(qa.lastLuma)} (0-255)${qa.lastIsCard ? `, brightest end-card pixel ${qa.lastBright}` : ''}`);
   add('No audio from the source clips in the master', qa.sourceAudioOk, qa.sourceAudioDetail);
@@ -55,7 +57,7 @@ export function writeReport(file, r) {
   for (const [key, evs] of Object.entries(r.built.events)) {
     for (const [name, t] of Object.entries(evs)) {
       if (name.startsWith('cue ')) continue;
-      const e = entries.find((x) => x.key === key && x.kind === 'clip');
+      const e = entries.find((x) => x.key === key);
       const f = t === 'start' ? e?.inF : Math.round(t * fps);
       const en = entries.find((x) => x.key === key && f >= x.inF && f < x.outF);
       L.push(`| ${key} | ${name} | ${t === 'start' ? `start (${t3(f / fps)})` : t3(t)} | ${f} | ${en ? t3((en.tlStartF + f - en.inF) / fps) : 'cut out'} | ${r.built.missing[key]?.includes(name) ? '**not found**, closest moment' : 'yes'} |`);
@@ -79,9 +81,23 @@ export function writeReport(file, r) {
   if (r.music) L.push(`- A4 music: take ${r.music.pick.used} of ${r.music.pick.rows.length} (${r.music.pick.rule}: local tempo spread ${r.music.pick.rows.map((x) => `take ${x.take} ${f2(x.bpmStdDev)} BPM`).join(', ')}); ${f2(grid.bpm)} BPM detected, downbeat at ${t3(grid.downbeat)} s of the file placed on timeline ${t3(grid.origin)} s; ${cfg.levels.musicRms} dBFS RMS where it plays (gain ${f2(r.mixRes.musicGainDb)} dB), ducked up to ${f2(r.mixRes.duckDepthDb)} dB under the voices${r.stopAt != null ? `; hard stop at ${t3(r.stopAt)} s with a ${cfg.music.hardStop.fadeMs} ms fade` : ''}.`);
   if (r.mixRes.ambienceGainDb != null) L.push(`- A5 ambience at ${cfg.levels.ambienceRms} dBFS RMS under the whole film (gain ${f2(r.mixRes.ambienceGainDb)} dB), ${cfg.ambience.fadeOut} s fade out at the end.`);
   L.push(`- Pre-master ${f2(Number(master.pre.input_i))} LUFS / ${f2(Number(master.pre.input_tp))} dBTP; gain ${f2(master.gain)} dB; limiter ceiling ${master.ceilingDb} dBTP at 4x oversampling (latency compensated); loudnorm pass 2 output ${master.pass2.output_i} LUFS, ${master.pass2.output_tp} dBTP, mode ${master.pass2.normalization_type}.`);
+  const holds = Object.entries(cfg.levels.sfxHold || {});
+  if (holds.length) L.push(`- Decay held: ${holds.map(([k, h]) => `${k} falls no faster than ${h.rate} dB/s from ${h.from} s after its loudest 50 ms (lift at most ${h.maxLift} dB)`).join('; ')}.`);
+  const ducks = Object.entries(cfg.levels.sfxDuck || {});
+  if (ducks.length) L.push(`- Effects ducked under the voices: ${ducks.map(([k, d]) => `${k} ${d} dB`).join(', ')} (same key and timing as the music duck).`);
   L.push(`- Export: \`out/${cfg.export.master}\` ${cfg.width}x${cfg.height}, ${fps} fps, H.264 CRF ${cfg.export.crf} (${cfg.export.x264Preset}), yuv420p, BT.709, AAC ${cfg.export.aacKbps}k ${cfg.export.sampleRate / 1000} kHz; \`out/${cfg.export.preview}\`${cfg.export.wide ? `; \`out/${cfg.export.wide}\` (16:9, blurred background)` : ''}.`);
+  for (const x of qa.extras || []) L.push(`- Extra loudness target: \`out/${x.name}\` at ${x.L.I} LUFS / ${x.L.TP} dBTP, mastered from the same premaster (gain ${f2(x.master.gain)} dB, limiter ceiling ${x.master.ceilingDb} dBTP); measured I ${f2(x.loud.I)} LUFS, TP ${f2(x.loud.TP)} dBTP.`);
   if (r.card) L.push(`- End card: ${cfg.endCard.seconds} s, font \`${r.card.font ? posix(r.card.font).split('/').pop() : 'ffmpeg default'}\`, ${cfg.endCard.lines.map((l) => `"${l.text}" (${l.size}${l.opacity < 1 ? `, ${Math.round(l.opacity * 100)}%` : ''})`).join(', ')}, fade in ${cfg.endCard.fadeIn} s.`);
+  if (r.fixes?.length) L.push(`- FIX passes applied: ${r.fixes.map((f) => `\`${f}\``).join(', ')}.`);
   L.push('');
+
+  if (qa.lastSeconds?.length) {
+    L.push('## Momentary loudness, last 5 s', '', `Master, 400 ms windows, value at the window end.${r.cardFrom != null ? ` End card from ${t3(r.cardFrom)} s.` : ''}${qa.tail?.ref ? ` Reference: ${cfg.qa.tail.sfx} M ${f2(qa.tail.ref.M)} LUFS.` : ''}`, '');
+    L.push(`| t (s) | M (LUFS) |${qa.tail?.ref ? ' Below reference (LU) |' : ''}`, `|---|---|${qa.tail?.ref ? '---|' : ''}`);
+    const pts = qa.lastSeconds.filter((p) => Math.round(p.t * 10) % 2 === 0);
+    for (const p of pts) L.push(`| ${p.t.toFixed(2)} | ${Number.isFinite(p.M) ? f2(p.M) : '-inf'} |${qa.tail?.ref ? ` ${Number.isFinite(p.M) ? f2(qa.tail.ref.M - p.M) : '-'} |` : ''}`);
+    L.push('');
+  }
 
   L.push('## Decisions and log', '');
   for (const a of r.log.assumptions) L.push(`- **${a.topic}**: ${a.msg}`);
@@ -98,8 +114,8 @@ export function writeSummary(file, r) {
   const lines = [
     `# ${cfg.id} summary`,
     '',
-    `1. Output: \`out/${cfg.export.master}\` (${cfg.width}x${cfg.height}, ${cfg.fps} fps), \`out/${cfg.export.preview}\`${cfg.export.wide ? `, \`out/${cfg.export.wide}\`` : ''}.`,
-    `2. Duration ${t3(qa.duration)} s (${qa.frames} frames); loudness ${f2(loud.I)} LUFS, true peak ${f2(loud.TP)} dBTP.`,
+    `1. Output: \`out/${cfg.export.master}\` (${cfg.width}x${cfg.height}, ${cfg.fps} fps), \`out/${cfg.export.preview}\`${cfg.export.wide ? `, \`out/${cfg.export.wide}\`` : ''}${(qa.extras || []).map((x) => `, \`out/${x.name}\``).join('')}.`,
+    `2. Duration ${t3(qa.duration)} s (${qa.frames} frames); loudness ${f2(loud.I)} LUFS, true peak ${f2(loud.TP)} dBTP${(qa.extras || []).map((x) => `; ${x.name} ${f2(x.loud.I)} LUFS, ${f2(x.loud.TP)} dBTP`).join('')}.`,
     `3. Edit: ${r.entries.map((e) => `${e.source} ${t3((e.outF - e.inF) / cfg.fps)} s`).join(', ')}.`,
     `4. Cues: ${r.cues.filter((c) => c.status === 'placed').length} placed, ${r.cues.filter((c) => c.status !== 'placed').length} dropped; ${hits.length} effects, worst sync error ${f2(qa.worstFrameError)} frames (tolerance ±${cfg.qa.syncFrames}).`,
     `5. Flagged for the owner: ${r.flags.length ? `${r.flags.length} item(s) on top of REPORT.md (${Object.entries(r.built.missing).filter(([, l]) => l.length).map(([k, l]) => `${k} ${l.length} event(s) not found`).concat(r.flags.filter((x) => /OVERRIDES/.test(x)).length ? ['overrides'] : []).join('; ')})` : 'none'}.`,

@@ -50,6 +50,14 @@ test('demo film: frame-exact sync, loudness, all QA pass', { timeout: 600000 }, 
   const loud = report.match(/I (-?[\d.]+) LUFS, TP (-?[\d.]+) dBTP/);
   assert.ok(Math.abs(Number(loud[1]) + 14) <= 0.5, `integrated ${loud[1]}`);
   assert.ok(Number(loud[2]) <= -1, `true peak ${loud[2]}`);
-  for (const f of ['HELLO_master.mp4', 'HELLO_preview_360p.mp4', 'HELLO_16x9.mp4', 'sync_check.jpg', 'edl_sheet.jpg', 'SUMMARY.md']) assert.ok(fs.existsSync(path.join(dir, 'out', f)), f);
+  for (const f of ['HELLO_master.mp4', 'HELLO_preview_360p.mp4', 'HELLO_16x9.mp4', 'HELLO_social.mp4', 'HELLO_16x9_social.mp4', 'sync_check.jpg', 'edl_sheet.jpg', 'SUMMARY.md']) assert.ok(fs.existsSync(path.join(dir, 'out', f)), f);
+  // Second loudness target: both social files at -10 ±0.5 LUFS, true peak ≤ -1 dBTP, own QA rows.
+  for (const name of ['HELLO_social.mp4', 'HELLO_16x9_social.mp4']) {
+    const row = report.split('\n').find((l) => l.includes(`\`${name}\`: -10 LUFS`));
+    assert.ok(row && row.includes('| PASS |'), `QA row for ${name}: ${row}`);
+    const m = row.match(/I (-?[\d.]+) LUFS, TP (-?[\d.]+) dBTP/);
+    assert.ok(Math.abs(Number(m[1]) + 10) <= 0.5, `${name} integrated ${m[1]}`);
+    assert.ok(Number(m[2]) <= -1, `${name} true peak ${m[2]}`);
+  }
   fs.rmSync(dir, { recursive: true, force: true });
 });

@@ -54,6 +54,17 @@ export async function loudestMoment(file) {
   return { ...best, series: m };
 }
 
+// "The last N s before the card stay within X LU of the strike": the reference is the highest
+// momentary value in the 1.5 s after `refAt`; the checked windows are the 400 ms windows that lie
+// wholly inside [from, to] (window end from + 0.4 to `to`).
+export function tailLoudness(series, { from, to, refAt, lu }) {
+  const ref = refAt == null ? null : series.filter((p) => p.t > refAt && p.t <= refAt + 1.5).reduce((a, p) => (p.M > a.M ? p : a), { t: null, M: -Infinity });
+  const win = series.filter((p) => p.t >= from + 0.4 - 1e-6 && p.t <= to + 1e-6);
+  const low = win.reduce((a, p) => (p.M < a.M ? p : a), { t: null, M: Infinity });
+  const ok = ref != null && ref.t != null && win.length > 0 && low.M >= ref.M - lu;
+  return { ref, low, gap: ref && low.t != null ? ref.M - low.M : null, from, to, lu, ok };
+}
+
 export function samplePeakDb(pcm) {
   let p = 0;
   let clipped = 0;

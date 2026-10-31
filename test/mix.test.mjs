@@ -49,3 +49,55 @@ test('loudness math and meter parsing', () => {
   assert.deepEqual(s, { I: -14, LRA: 6.2, TP: -1.4 });
   assert.equal(parseLoudnormJson('x\n{\n "input_i" : "-18.29",\n "normalization_type" : "linear"\n}\n').input_i, '-18.29');
 });
+
+test('decay hold: the tail falls no faster than the rate, the attack and peak are untouched, lift is capped', async () => {
+  const { holdDecay } = await import('../src/core/sfx.mjs');
+  // A bell-like take: 10 ms attack, then 10 dB/s exponential decay over 6 s.
+  const n = 6 * SR;
+  const p = new Float32Array(n * CH);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const env = t < 0.01 ? t / 0.01 : 10 ** ((-10 * (t - 0.01)) / 20);
+    p[i * CH] = p[i * CH + 1] = 0.5 * env * Math.sin(2 * Math.PI * 220 * t);
+  }
+  const out = holdDecay(p, { rate: 1.5, from: 0.5, maxLift: 30 });
+  const rmsDb = (x, t0, t1) => {
+    let s = 0;
+    for (let i = Math.round(t0 * SR); i < Math.round(t1 * SR); i++) s += x[i * CH] ** 2;
+    return 10 * Math.log10(s / (Math.round(t1 * SR) - Math.round(t0 * SR)));
+  };
+  assert.equal(out[Math.round(0.01 * SR) * CH], p[Math.round(0.01 * SR) * CH]);
+  const ref = rmsDb(out, 0.5, 0.6);
+  for (const t of [1.5, 2.5, 3.0]) assert.ok(rmsDb(out, t, t + 0.1) >= ref - 1.5 * (t - 0.5) - 0.6, `held at ${t} s`);
+  // Natural decay at 4.5 s is 45 dB down; the lift stops at 30 dB, so the tail still falls there.
+  assert.ok(rmsDb(out, 5.5, 5.6) < ref - 1.5 * 5 - 3, 'lift capped');
+  assert.ok(rmsDb(out, 5.5, 5.6) - rmsDb(p, 5.5, 5.6) <= 30.5, 'at most 30 dB of lift');
+});
+
+test('an effect with duckDb is ducked under the voices; a hit gain is applied on its own sample', () => {
+  const total = 2 * SR;
+  const bell = tone(2, 0.25);
+  const voice = tone(0.5, 0.5);
+  const res = renderMix({ totalSamples: total, voices: [{ pcm: voice, startSample: Math.round(0.5 * SR) }], hits: [{ pcm: bell, startSample: 0, duckDb: 6 }], levels: { duckDb: 4, duckMaxDb: 6, attackMs: 120, holdMs: 200, releaseMs: 450, duckKeyDb: -40 } });
+  const at = (pcm, t) => {
+    let s = 0;
+    for (let i = Math.round(t * SR); i < Math.round((t + 0.05) * SR); i++) s += pcm[i * CH] ** 2;
+    return 10 * Math.log10(s / Math.round(0.05 * SR));
+  };
+  assert.ok(Math.abs(at(res.stems.A3, 0.2) - at(bell, 0.2)) < 0.1, 'not ducked before the voice');
+  assert.ok(at(bell, 0.85) - at(res.stems.A3, 0.85) > 5.5, 'ducked about 6 dB while the voice plays');
+  const g = renderMix({ totalSamples: total, hits: [{ pcm: bell, startSample: 100, gain: -6 }], levels: { duckDb: 4 } });
+  assert.ok(Math.abs(g.stems.A3[(100 + 500) * CH] - bell[500 * CH] * 10 ** (-6 / 20)) < 1e-6);
+  assert.equal(g.stems.A3[50 * CH], 0);
+});
+
+test('tail loudness: lowest momentary value in the window against the strike reference', async () => {
+  const { tailLoudness } = await import('../src/core/qa.mjs');
+  const series = [];
+  for (let t = 0.1; t <= 10; t += 0.1) series.push({ t: Math.round(t * 10) / 10, M: t < 5 ? -30 : t < 5.5 ? -8 : -8 - (t - 5.5) * 2 });
+  const ok = tailLoudness(series, { from: 6, to: 9, refAt: 5, lu: 8 });
+  assert.equal(ok.ref.M, -8);
+  assert.ok(Math.abs(ok.low.M - (-15)) < 1e-6 && Math.abs(ok.low.t - 9) < 1e-6);
+  assert.equal(ok.ok, true);
+  assert.equal(tailLoudness(series, { from: 6, to: 9, refAt: 5, lu: 6 }).ok, false);
+});

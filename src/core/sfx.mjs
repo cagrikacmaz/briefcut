@@ -27,12 +27,55 @@ export function prepareSfx(pcm, spec, peakDb) {
   return { pcm: t.pcm, onset: t.onset, leadingSilence: t.leadingSilence, duration: t.duration };
 }
 
+// Holds a ringing take's decay: from `from` seconds after its loudest 50 ms window, the 50 ms RMS
+// envelope may fall no faster than `rate` dB/s; quieter windows are lifted, by at most `maxLift`
+// dB, so the take's own tail rings longer. The attack and the peak are untouched. The gain is
+// interpolated between window centres and never falls once the lift has started, so the tail's
+// own beating and fluctuations stay audible instead of being flattened.
+export function holdDecay(pcm, { rate, from = 0.5, maxLift = 30 }) {
+  const n = pcm.length / CH;
+  const w = Math.round(0.05 * SR);
+  const env = [];
+  for (let i = 0; i < n; i += w) {
+    let s = 0;
+    const e = Math.min(n, i + w);
+    for (let k = i; k < e; k++) s += pcm[k * CH] ** 2 + pcm[k * CH + 1] ** 2;
+    env.push(10 * Math.log10(s / (CH * (e - i)) + 1e-20));
+  }
+  let kp = 0;
+  for (let k = 1; k < env.length; k++) if (env[k] > env[kp]) kp = k;
+  const k0 = kp + Math.round((from * SR) / w);
+  const gains = env.map(() => 0);
+  if (k0 < env.length) {
+    const ref = env[k0];
+    let g = 0;
+    for (let k = k0; k < env.length; k++) {
+      const target = ref - rate * (((k - k0) * w) / SR);
+      g = Math.min(maxLift, Math.max(g, target - env[k]));
+      gains[k] = g;
+    }
+  }
+  const out = new Float32Array(pcm.length);
+  for (let i = 0; i < n; i++) {
+    const x = i / w - 0.5;
+    const k = Math.max(0, Math.min(env.length - 1, Math.floor(x)));
+    const k2 = Math.min(env.length - 1, k + 1);
+    const t = Math.max(0, Math.min(1, x - k));
+    const g = 10 ** ((gains[k] * (1 - t) + gains[k2] * t) / 20);
+    out[i * CH] = pcm[i * CH] * g;
+    out[i * CH + 1] = pcm[i * CH + 1] * g;
+  }
+  return out;
+}
+
 export async function loadSfxVariants(cfg, files) {
   const out = {};
   for (const f of files) {
     const spec = cfg.sfx[f.name];
     const peak = cfg.levels.sfxPeakByName?.[f.name] ?? cfg.levels.sfxPeak;
     const p = prepareSfx(await loadAudio(f.file), spec, peak);
+    const hold = cfg.levels.sfxHold?.[f.name];
+    if (hold) p.pcm = holdDecay(p.pcm, hold);
     (out[f.name] ||= []).push({ ...p, variant: f.variant, file: f.file, asset: f.assetName, peakDb: peak });
   }
   for (const list of Object.values(out)) list.sort((a, b) => a.variant - b.variant);

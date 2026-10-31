@@ -2,7 +2,7 @@
 // exports, sync_check.jpg and a QA report. Deterministic: the same inputs give the same master.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseBrief, findBrief, clipKey, parseEventList } from './brief.mjs';
+import { parseBrief, findBrief, readBrief, clipKey, parseEventList } from './brief.mjs';
 import { buildEntries, expandCues, enforceShotRules, snapCutsToBeats, placeCues, syncRule } from './edl.mjs';
 import { AssetCache, loadAudio, trimOnset, peakOf } from './assets.mjs';
 import { prepareAudio, pickMusic, alignCached, voiceAsset } from './prepare.mjs';
@@ -13,7 +13,7 @@ import { masterMix, loudnessOk } from './master.mjs';
 import { probeClip, renderPicture, mux, renderPreview, renderWide, edlSheet, edgeFrame, retimeFilters, cardChain } from './video.mjs';
 import { syncCheck } from './sync-check.mjs';
 import { contactSheet } from './sheets.mjs';
-import { silences, measureShift, peakAfter, loudestMoment, samplePeakDb } from './qa.mjs';
+import { silences, measureShift, peakAfter, loudestMoment, samplePeakDb, tailLoudness } from './qa.mjs';
 import { writeReport, writeSummary, writeOpenQuestions, writeCueTimes } from './report.mjs';
 import { decode, writeWavFloat, measureR128, probe } from './ff.mjs';
 import { audioProvider } from '../providers/audio/index.mjs';
@@ -37,6 +37,9 @@ export function versionOf(filmDir, id) {
   const fixes = fs.readdirSync(filmDir).filter((f) => new RegExp(`^${id}_FIX\\d+\\.md$`, 'i').test(f));
   return 1 + fixes.length;
 }
+
+// A loudness reading whose true peak is at least its sample peak (the meter rounds to 0.1 dB).
+const peakSafe = (l) => ({ ...l, TP: Math.max(l.TP, l.samplePeakDb ?? -Infinity) });
 
 const versioned = (name, v) => (v > 1 ? name.replace(/(\.mp4)$/i, `_v${v}$1`) : name);
 
@@ -93,12 +96,14 @@ export async function cutFilm(opts) {
   const outDir = ensureDir(path.join(filmDir, 'out'));
   const workDir = ensureDir(path.join(outDir, 'work'));
   const log = opts.log || new Log(path.join(outDir, 'briefcut.log'), { quiet: opts.quiet });
-  const briefText = fs.readFileSync(briefFile, 'utf8');
-  const cfg = parseBrief(briefText, path.basename(briefFile), log, { preset: opts.preset });
+  const brief = readBrief(briefFile);
+  const cfg = parseBrief(brief.text, path.basename(briefFile), log, { preset: opts.preset });
+  if (brief.applied.length) log.info(`FIX passes applied: ${brief.applied.join('; ')}`);
   const version = versionOf(filmDir, cfg.id);
   cfg.export.master = versioned(cfg.export.master, version);
   cfg.export.preview = versioned(cfg.export.preview, version);
   if (cfg.export.wide) cfg.export.wide = versioned(cfg.export.wide, version);
+  for (const x of cfg.export.extra) for (const f of x.files) f.name = versioned(f.name, version);
   const flags = [];
   applyOverrides(cfg, filmDir, log, flags);
 
@@ -169,6 +174,10 @@ export async function cutFilm(opts) {
     h.timeline = h.target;
     h.syncTime = h.target;
     h.file = h.sfx.asset;
+    h.duckDb = cfg.levels.sfxDuck?.[h.sfxName] || 0;
+    if (cfg.levels.sfxHold?.[h.sfxName]) (h.notes ||= []).push(`decay held to ${cfg.levels.sfxHold[h.sfxName].rate} dB/s`);
+    if (h.duckDb) (h.notes ||= []).push(`ducked ${h.duckDb} dB under the voices`);
+    if (h.gain) (h.notes ||= []).push(`gain ${h.gain > 0 ? '+' : ''}${h.gain} dB`);
   }
 
   // Voices.
@@ -186,7 +195,8 @@ export async function cutFilm(opts) {
   const items = [];
   for (const c of cues.filter((x) => x.kind === 'voice' && x.status === 'placed')) {
     const v = audio.voices[c.row];
-    items.push({ cue: c, name: v.name, file: v.file, spoken: v.spoken, ...(await loadVoice(v.file, cfg.levels.voicePeak, cfg.voiceRules.gateDb)) });
+    items.push({ cue: c, name: v.name, file: v.file, spoken: v.spoken, ...(await loadVoice(v.file, cfg.levels.voicePeak + (c.gain || 0), cfg.voiceRules.gateDb)) });
+    if (c.gain) (c.notes ||= []).push(`gain ${c.gain > 0 ? '+' : ''}${c.gain} dB (peak ${cfg.levels.voicePeak + c.gain} dBFS)`);
     c.file = v.name;
     c.sentText = v.spoken;
     c.voiceUsed = v.voice?.name;
@@ -228,7 +238,7 @@ export async function cutFilm(opts) {
   const mixRes = renderMix({
     totalSamples,
     voices: items.filter((v) => v.cue.status === 'placed').map((v) => ({ pcm: v.pcm, startSample: Math.round(v.start * SR) - v.onset, bus: v.cue.track })),
-    hits: hits.map((h) => ({ pcm: h.sfx.pcm, startSample: h.startSample })),
+    hits: hits.map((h) => ({ pcm: h.sfx.pcm, startSample: h.startSample, gain: h.gain || 0, duckDb: h.duckDb })),
     music: music ? { pcm: music.pcm, offsetSamples: Math.round(music.pick.grid.downbeat * SR), beatOneAt: cfg.music.beatOneAt || 0, stopAt, stopFadeMs: cfg.music.hardStop?.fadeMs ?? 20, fadeOut: stopAt == null ? cfg.music.fadeOut : 0 } : null,
     ambience: audio.ambience ? { pcm: trimOnset(await loadAudio(audio.ambience.file), { gateDb: -50, preRoll: 0, tail: 0.2 }).pcm, fadeOut: cfg.ambience.fadeOut } : null,
     levels: cfg.levels,
@@ -259,24 +269,54 @@ export async function cutFilm(opts) {
     const prevs = fs.readdirSync(prevDir).sort();
     for (const p of prevs.slice(0, Math.max(0, prevs.length - 3))) fs.rmSync(path.join(prevDir, p));
   }
+  // One mastering per loudness target, from the same premaster: the limiter ceiling steps down and
+  // loudnorm's target is biased until the exported file itself meets the rule. A loud target
+  // (-10 LUFS) limits harder, and the AAC encoder then overshoots the ceiling by 2 dB or more,
+  // hence the deeper steps.
+  const masterTo = async (L, file, tag = '') => {
+    let m;
+    let l;
+    let bias = 0;
+    outer: for (const ceiling of [-1.5, -2.0, -2.5, -3.0, -3.5, -4.0, -4.5, -5.0]) {
+      for (let k = 0; k < 3; k++) {
+        m = await masterMix(premaster, workDir, L, ceiling, log, { bias, tag });
+        await mux(picture, m.file, cfg, file);
+        l = await measureR128(file);
+        // The meter prints true peak to 0.1 dB; the true peak is never below the sample peak.
+        l.samplePeakDb = samplePeakDb(await decode(file)).peakDb;
+        log.info(`${path.basename(file)} at limiter ceiling ${ceiling} dBTP, loudnorm bias ${bias.toFixed(2)} LU: I ${l.I} LUFS, TP ${l.TP} dBTP, sample peak ${l.samplePeakDb.toFixed(2)} dBFS`);
+        if (loudnessOk(peakSafe(l), L) && Math.abs(l.I - L.I) <= 0.15) break outer;
+        if (peakSafe(l).TP > L.TP) break;
+        bias += L.I - l.I;
+      }
+    }
+    if (Math.abs(bias) > 0.05) log.assume('loudness', `${path.basename(file)}: loudnorm's target was biased ${bias >= 0 ? '+' : ''}${bias.toFixed(2)} LU so the export measures ${L.I} LUFS on the EBU R128 meter (loudnorm's internal meter reads this short film differently)`);
+    return { master: m, loud: l };
+  };
   const L = cfg.loudness;
-  let master;
-  let loud;
-  let bias = 0;
-  outer: for (const ceiling of [-1.5, -2.0, -2.5, -3.0]) {
-    for (let k = 0; k < 3; k++) {
-      master = await masterMix(premaster, workDir, L, ceiling, log, { bias });
-      await mux(picture, master.file, cfg, masterFile);
-      loud = await measureR128(masterFile);
-      log.info(`export at limiter ceiling ${ceiling} dBTP, loudnorm bias ${bias.toFixed(2)} LU: I ${loud.I} LUFS, TP ${loud.TP} dBTP`);
-      if (loudnessOk(loud, L) && Math.abs(loud.I - L.I) <= 0.15) break outer;
-      if (loud.TP > L.TP) break;
-      bias += L.I - loud.I;
+  const { master, loud } = await masterTo(L, masterFile);
+  await renderPreview(masterFile, cfg, path.join(outDir, cfg.export.preview));
+  const cardFrom = entries.at(-1).kind === 'card' ? entries.at(-1).tlStartF / cfg.fps : null;
+  if (cfg.export.wide && cfg.height > cfg.width) await renderWide(masterFile, cfg, path.join(outDir, cfg.export.wide), { cardFrom });
+  // Extra loudness targets (for platforms that do not normalize): mastered again from the same
+  // premaster and muxed with the same picture; a 16x9 file is the 16:9 export of that master.
+  const extras = [];
+  for (const [i, x] of cfg.export.extra.entries()) {
+    const vertical = x.files.find((f) => !f.wide);
+    const base = vertical ? path.join(outDir, vertical.name) : path.join(workDir, `extra_${i + 1}.mp4`);
+    const got = await masterTo(x.loudness, base, `_extra${i + 1}`);
+    const outs = vertical ? [{ name: vertical.name, file: base, loud: got.loud }] : [];
+    for (const f of x.files.filter((y) => y.wide)) {
+      const file = path.join(outDir, f.name);
+      if (cfg.height > cfg.width) await renderWide(base, cfg, file, { cardFrom });
+      else fs.copyFileSync(base, file);
+      outs.push({ name: f.name, file, loud: await measureR128(file) });
+    }
+    for (const o of outs) {
+      const sp = samplePeakDb(await decode(o.file));
+      extras.push({ ...o, L: x.loudness, master: got.master, samplePeakDb: sp.peakDb, clipped: sp.clipped, ok: loudnessOk(peakSafe({ ...o.loud, samplePeakDb: sp.peakDb }), x.loudness) && sp.clipped === 0 && sp.peakDb < -0.1 });
     }
   }
-  if (Math.abs(bias) > 0.05) log.assume('loudness', `loudnorm's target was biased ${bias >= 0 ? '+' : ''}${bias.toFixed(2)} LU so the export measures ${L.I} LUFS on the EBU R128 meter (loudnorm's internal meter reads this short film differently)`);
-  await renderPreview(masterFile, cfg, path.join(outDir, cfg.export.preview));
-  if (cfg.export.wide && cfg.height > cfg.width) await renderWide(masterFile, cfg, path.join(outDir, cfg.export.wide), { cardFrom: entries.at(-1).kind === 'card' ? entries.at(-1).tlStartF / cfg.fps : null });
   await edlSheet(entries, cfg, picture, path.join(outDir, 'edl_sheet.jpg'), workDir);
   // Sheets of what a viewer gets: the preview at 2 fps and the 16:9 export at 1 fps.
   await contactSheet(path.join(outDir, cfg.export.preview), path.join(outDir, 'preview_sheet.jpg'), { fps: 2, width: 120, cols: 12, srcFps: cfg.fps, frames: totalF });
@@ -317,8 +357,8 @@ export async function cutFilm(opts) {
   const audioStreams = info.streams.filter((s) => s.codec_type === 'audio');
   const qa = { duration: Number(vs.duration ?? info.format.duration), frames: Number(vs.nb_frames), totalF, loud };
   qa.durationOk = qa.duration >= cfg.durationQa[0] - 1e-3 && qa.duration <= cfg.durationQa[1] + 1e-3 && qa.frames === totalF;
-  qa.loudOk = loudnessOk(loud, L);
   const sp = samplePeakDb(finalPcm);
+  qa.loudOk = loudnessOk(peakSafe({ ...loud, samplePeakDb: sp.peakDb }), L);
   qa.samplePeakDb = sp.peakDb;
   qa.clipped = sp.clipped;
   qa.clipOk = sp.clipped === 0 && sp.peakDb < -0.1;
@@ -332,8 +372,17 @@ export async function cutFilm(opts) {
     qa.musicAfterDb = peakAfter(mixRes.stems.A4, stopAt + (cfg.music.hardStop.fadeMs || 20) / 1000, masterGainDb);
     qa.musicStopOk = qa.musicAfterDb < -60;
   }
+  const lm = await loudestMoment(masterFile);
+  qa.extras = extras;
+  extras.forEach((x, i) => (qa[`extra${i + 1}Ok`] = x.ok));
+  // Momentary loudness of the film's last 5 s (window end every 0.1 s), for the report.
+  qa.lastSeconds = lm.series.filter((p) => p.t >= qa.duration - 5 - 1e-6);
+  if (cfg.qa.tail && cardFrom != null) {
+    const ref = hits.find((h) => h.sfxName === cfg.qa.tail.sfx);
+    qa.tail = tailLoudness(lm.series, { from: cardFrom - cfg.qa.tail.seconds, to: cardFrom, refAt: ref ? ref.timeline : null, lu: cfg.qa.tail.lu });
+    qa.tailOk = qa.tail.ok;
+  }
   if (cfg.qa.loudestSfx) {
-    const lm = await loudestMoment(masterFile);
     const strikes = hits.filter((h) => h.sfxName === cfg.qa.loudestSfx);
     qa.loudest = lm;
     qa.loudestSfx = cfg.qa.loudestSfx;
@@ -388,7 +437,7 @@ export async function cutFilm(opts) {
     provider: provider.name,
   };
 
-  const r = { cfg, entries, cues, hits, items, qa, loud, master, grid, music, mixRes, log, flags, making, built, briefName: path.basename(briefFile), version, card, clips, filmDir, outDir, stopAt };
+  const r = { cfg, entries, cues, hits, items, qa, loud, master, grid, music, mixRes, log, flags, making, built, briefName: path.basename(briefFile), fixes: brief.fixes, version, card, clips, filmDir, outDir, stopAt, cardFrom };
   writeReport(path.join(outDir, 'REPORT.md'), r);
   writeSummary(path.join(outDir, 'SUMMARY.md'), r);
   writeCueTimes(path.join(outDir, 'cue_times.json'), r);
