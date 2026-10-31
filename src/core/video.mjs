@@ -128,8 +128,10 @@ export async function renderPreview(master, cfg, out) {
 }
 
 // 16:9 export of a vertical film: the film centred on a blurred, darkened copy of itself.
-export async function renderWide(master, cfg, out, { width = 1920, height = 1080 } = {}) {
-  const vf = `[0:v]split=2[a][b];[a]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},gblur=sigma=40,eq=brightness=-0.12:saturation=0.8[bg];[b]scale=-2:${height}:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:0,format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv[v]`;
+export async function renderWide(master, cfg, out, { width = 1920, height = 1080, cardFrom = null } = {}) {
+  // During an end card the background is plain black (a blurred copy of the card's text would ghost).
+  const card = cardFrom != null ? `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='gte(t\,${cardFrom.toFixed(4)})'` : '';
+  const vf = `[0:v]split=2[a][b];[a]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},gblur=sigma=40,eq=brightness=-0.12:saturation=0.8${card}[bg];[b]scale=-2:${height}:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:0,format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv[v]`;
   await ffmpeg(['-y', '-v', 'error', '-i', master, '-filter_complex', vf, '-map', '[v]', '-map', '0:a', '-c:v', 'libx264', '-preset', cfg.export.x264Preset, '-crf', String(cfg.export.crf), '-pix_fmt', 'yuv420p', ...BT709, '-c:a', 'copy', '-movflags', '+faststart', out]);
 }
 

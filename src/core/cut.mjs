@@ -2,7 +2,7 @@
 // exports, sync_check.jpg and a QA report. Deterministic: the same inputs give the same master.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseBrief, findBrief, clipKey } from './brief.mjs';
+import { parseBrief, findBrief, clipKey, parseEventList } from './brief.mjs';
 import { buildEntries, expandCues, enforceShotRules, snapCutsToBeats, placeCues, syncRule } from './edl.mjs';
 import { AssetCache, loadAudio, trimOnset, peakOf } from './assets.mjs';
 import { prepareAudio, pickMusic, alignCached, voiceAsset } from './prepare.mjs';
@@ -12,6 +12,7 @@ import { renderMix } from './mix.mjs';
 import { masterMix, loudnessOk } from './master.mjs';
 import { probeClip, renderPicture, mux, renderPreview, renderWide, edlSheet, edgeFrame, retimeFilters, cardChain } from './video.mjs';
 import { syncCheck } from './sync-check.mjs';
+import { contactSheet } from './sheets.mjs';
 import { silences, measureShift, peakAfter, loudestMoment, samplePeakDb } from './qa.mjs';
 import { writeReport, writeSummary, writeOpenQuestions, writeCueTimes } from './report.mjs';
 import { decode, writeWavFloat, measureR128, probe } from './ff.mjs';
@@ -38,6 +39,25 @@ export function versionOf(filmDir, id) {
 }
 
 const versioned = (name, v) => (v > 1 ? name.replace(/(\.mp4)$/i, `_v${v}$1`) : name);
+
+// OVERRIDES.md: decisions taken outside the brief, in brief syntax, each with its reason and
+// flagged on top of the report. Supported: "- Audio map row <n> at event: <events> (reason)".
+export function applyOverrides(cfg, filmDir, log, flags = []) {
+  const file = path.join(filmDir, 'OVERRIDES.md');
+  if (!fs.existsSync(file)) return [];
+  const applied = [];
+  for (const m of fs.readFileSync(file, 'utf8').matchAll(/^[-*]\s*Audio map row (\d+) at event:\s*([^(\n]+?)\s*(?:\(([^\n]*)\))?\s*$/gim)) {
+    const row = cfg.cues.find((c) => c.row === Number(m[1]));
+    if (!row) throw new Error(`OVERRIDES.md: the audio map has no row ${m[1]}`);
+    const before = row.events.join(', ');
+    row.events = parseEventList(m[2]);
+    const msg = `audio map row ${m[1]} (${row.voice}) plays at ${row.events.join(', ')} instead of ${before}${m[3] ? `: ${m[3]}` : ''} (OVERRIDES.md)`;
+    log.assume('override', msg);
+    flags.push(msg);
+    applied.push(msg);
+  }
+  return applied;
+}
 
 // The attack point of a prepared hit (seconds into its buffer): the first 5 ms window within
 // 10 dB of the loudest window. For a hard transient this is the transient; for a soft attack it
@@ -80,6 +100,7 @@ export async function cutFilm(opts) {
   cfg.export.preview = versioned(cfg.export.preview, version);
   if (cfg.export.wide) cfg.export.wide = versioned(cfg.export.wide, version);
   const flags = [];
+  applyOverrides(cfg, filmDir, log, flags);
 
   // Clips.
   const files = findClips(filmDir);
@@ -132,11 +153,21 @@ export async function cutFilm(opts) {
   const variants = await loadSfxVariants(cfg, audio.sfx);
   const hits = cues.filter((c) => c.kind === 'sfx' && c.status === 'placed');
   assignVariants(hits, variants);
+  // Every effect is placed by its attack point (where it is heard to start), not by the file's
+  // gated onset: a two-part sound (a creak then a clack) or a soft swell would otherwise be heard
+  // 50-100 ms after its frame. A negative offset on a soft sound (onset trim) exists to compensate
+  // a slow attack; since the attack itself is placed, that offset is not added again.
   for (const h of hits) {
-    h.attack = attackPoint(h.sfx.pcm) - h.sfx.onset / SR;
-    h.startSample = Math.round(h.target * SR) - h.sfx.onset;
+    const atk = attackPoint(h.sfx.pcm);
+    h.attackDelay = atk - h.sfx.onset / SR;
+    if (cfg.sfx[h.sfxName].trim === 'onset' && h.offset < 0 && !h.pinned) {
+      h.target = h.pictureTime;
+      (h.notes ||= []).push(`offset ${h.offset} s not added: the measured attack (${(h.attackDelay * 1000).toFixed(0)} ms after the gated onset) is placed on the event frame`);
+      log.assume('soft attack', `cue ${h.id} ${h.sfxName}: the brief's ${h.offset} s offset compensates a soft attack; briefcut places the measured attack on the event frame instead (attack ${(h.attackDelay * 1000).toFixed(0)} ms after the gated onset in this take)`);
+    }
+    h.startSample = Math.round(h.target * SR) - Math.round(atk * SR);
     h.timeline = h.target;
-    h.syncTime = h.target + h.attack;
+    h.syncTime = h.target;
     h.file = h.sfx.asset;
   }
 
@@ -245,29 +276,36 @@ export async function cutFilm(opts) {
   }
   if (Math.abs(bias) > 0.05) log.assume('loudness', `loudnorm's target was biased ${bias >= 0 ? '+' : ''}${bias.toFixed(2)} LU so the export measures ${L.I} LUFS on the EBU R128 meter (loudnorm's internal meter reads this short film differently)`);
   await renderPreview(masterFile, cfg, path.join(outDir, cfg.export.preview));
-  if (cfg.export.wide && cfg.height > cfg.width) await renderWide(masterFile, cfg, path.join(outDir, cfg.export.wide));
+  if (cfg.export.wide && cfg.height > cfg.width) await renderWide(masterFile, cfg, path.join(outDir, cfg.export.wide), { cardFrom: entries.at(-1).kind === 'card' ? entries.at(-1).tlStartF / cfg.fps : null });
   await edlSheet(entries, cfg, picture, path.join(outDir, 'edl_sheet.jpg'), workDir);
+  // Sheets of what a viewer gets: the preview at 2 fps and the 16:9 export at 1 fps.
+  await contactSheet(path.join(outDir, cfg.export.preview), path.join(outDir, 'preview_sheet.jpg'), { fps: 2, width: 120, cols: 12, srcFps: cfg.fps, frames: totalF });
+  if (cfg.export.wide && cfg.height > cfg.width) await contactSheet(path.join(outDir, cfg.export.wide), path.join(outDir, 'wide_sheet.jpg'), { fps: 1, width: 320, cols: 5, srcFps: cfg.fps, frames: totalF });
 
   // QA, measured on the master.
   const finalPcm = await decode(masterFile);
   const masterGainDb = db(peakOf(finalPcm)) - db(peakOf(mixRes.mix));
+  // Where each sound sits in the master: 200 ms of the premix from the sound's start, found in
+  // the master by cross-correlation (the whole mix as template cannot lock onto a later wing beat
+  // or tick the way the sound's own first milliseconds can).
+  const shiftAt = (startSample) => {
+    const n = Math.round(0.2 * SR);
+    const s0 = Math.max(0, startSample);
+    return measureShift(finalPcm, mixRes.mix.subarray(s0 * CH, (s0 + n) * CH), s0, { windowMs: 200, maxLagMs: 125 });
+  };
   for (const h of hits) {
-    const tpl = h.sfx.pcm.slice(0, Math.round(0.08 * SR) * CH);
-    const m = measureShift(finalPcm, tpl, h.startSample);
+    const m = shiftAt(h.startSample);
     h.measuredShiftMs = (m.lag / SR) * 1000;
     h.measuredCorr = m.r;
     h.measuredAttack = h.syncTime + m.lag / SR;
-    // Reference frame: a hard hit lands on its event frame plus the brief's offset (an offset on
-    // a hit is a deliberate lead or lag); a soft sound (onset trim) must be heard on the event
-    // frame itself, its offset only compensating the slow attack.
-    h.reference = cfg.sfx[h.sfxName].trim === 'onset' ? h.pictureTime : h.target;
+    // Reference: the event frame plus any deliberate offset (target).
+    h.reference = h.target;
     h.frameError = (h.measuredAttack - h.reference) * cfg.fps;
   }
   for (const v of items) {
     const c = v.cue;
     if (c.status !== 'placed') continue;
-    const tpl = v.pcm.slice(v.onset * CH, (v.onset + Math.round(0.08 * SR)) * CH);
-    const m = measureShift(finalPcm, tpl, Math.round(v.start * SR));
+    const m = shiftAt(Math.round(v.start * SR) - v.onset);
     c.measuredShiftMs = (m.lag / SR) * 1000;
     c.measuredCorr = m.r;
     c.frameError = (v.start + m.lag / SR - c.target) * cfg.fps;

@@ -276,7 +276,10 @@ export function placeCues(entries, cues, cfg, log) {
 
 export function syncRule(c, cfg) {
   if (c.kind === 'voice' && c.offset) return `line ${c.offset > 0 ? '+' : ''}${c.offset.toFixed(2)} s after ${c.event || 'its event'}`;
-  const spec = cfg.eventSpecs.find((s) => s.key === c.key && s.names.some((n) => (n.includes('..') ? new RegExp(`^${n.split('..')[0].replace(/\d+$/, '')}\\d+$`, 'i').test(c.event || '') : n.toLowerCase() === (c.event || '').toLowerCase())));
+  // A numbered name ("tap_1", "step_1 .. step_n") covers every event with the same stem.
+  const stem = (n) => n.split('..')[0].replace(/\d+$/, '');
+  const ev = (c.event || '').toLowerCase();
+  const spec = cfg.eventSpecs.find((s) => s.key === c.key && s.names.some((n) => n.toLowerCase() === ev)) || cfg.eventSpecs.find((s) => s.key === c.key && s.names.some((n) => /\d+$|\.\./.test(n) && new RegExp(`^${stem(n)}\\d+$`, 'i').test(ev)));
   if (spec) return spec.what;
   if (c.event === 'start') return 'first frame of the shot in the edit';
   return c.kind === 'voice' ? 'speaker mouth opens' : 'event frame';

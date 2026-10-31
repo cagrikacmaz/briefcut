@@ -394,7 +394,9 @@ export function parseBrief(text, briefName, log, { preset: presetArg = null } = 
 export function findBrief(filmDir, explicit) {
   if (explicit) return path.resolve(filmDir, explicit);
   const names = fs.readdirSync(filmDir);
-  const pick = names.find((f) => /^BRIEF\.md$/i.test(f)) || names.find((f) => /_BRIEF\.md$/i.test(f));
+  // A scene-prompt file (FLOW_BRIEF.md) is not the film brief: the brief has the EDL table.
+  const isBrief = (f) => /\|\s*Order\s*\|\s*Source\s*\|/i.test(fs.readFileSync(path.join(filmDir, f), 'utf8'));
+  const pick = names.find((f) => /^BRIEF\.md$/i.test(f)) || names.filter((f) => /_BRIEF\.md$/i.test(f)).find(isBrief);
   if (!pick) throw new Error(`no BRIEF.md or *_BRIEF.md in ${filmDir}`);
   return path.join(filmDir, pick);
 }

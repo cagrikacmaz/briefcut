@@ -5,20 +5,20 @@ import path from 'node:path';
 import { extractFrames, labelImage, tile } from './video.mjs';
 import { ensureDir } from './util.mjs';
 
-export async function syncCheck(master, cues, cfg, out, workDir, { perRow = 2 } = {}) {
+export async function syncCheck(master, cues, cfg, out, workDir, { perRow = cfg.height > cfg.width ? 3 : 2 } = {}) {
   const fps = cfg.fps;
   const d = Math.max(1, Math.round(fps / 8));
   const list = cues.filter((c) => c.status === 'placed').sort((a, b) => a.timeline - b.timeline || String(a.id).localeCompare(String(b.id)));
   const frames = [];
   for (const c of list) {
-    const f = Math.round(c.syncTime * fps);
+    const f = Math.floor(c.syncTime * fps + 1e-6);
     frames.push(Math.max(0, f - d), f, f + d);
   }
   const dir = ensureDir(path.join(workDir, 'sync'));
   const imgs = await extractFrames(master, frames, dir, { width: cfg.sync.checkWidth });
   const labelled = [];
   for (const [i, c] of list.entries()) {
-    const f = Math.round(c.syncTime * fps);
+    const f = Math.floor(c.syncTime * fps + 1e-6);
     for (let k = 0; k < 3; k++) {
       const o = path.join(dir, `s_${String(i * 3 + k).padStart(4, '0')}.png`);
       const head = k === 1 ? `#${c.id} ${c.kind === 'sfx' ? c.sfxName : c.voice}\n${c.event || '-'} f${f} ${c.syncTime.toFixed(3)}s\n${(c.rule || '').slice(0, 30)}` : `${k === 0 ? '-' : '+'}1/8 s\nf${frames[i * 3 + k]}`;

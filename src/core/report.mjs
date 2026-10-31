@@ -15,7 +15,7 @@ export function qaRows(r) {
   add(`Loudness ${L.I} LUFS ±${L.tolerance}, true peak ≤ ${L.TP} dBTP, no clipping`, qa.loudOk && qa.clipOk, `I ${f2(loud.I)} LUFS, TP ${f2(loud.TP)} dBTP, LRA ${f2(loud.LRA)} LU (measured on the exported AAC); sample peak ${f2(qa.samplePeakDb)} dBFS, ${qa.clipped} samples at full scale`);
   const dropped = r.cues.filter((c) => c.status !== 'placed');
   add('Every event and cue placed or logged', qa.cuesOk, `${r.cues.filter((c) => c.status === 'placed').length} placed, ${dropped.length} dropped${dropped.length ? ` (${dropped.map((c) => `#${c.id}: ${c.dropReason}`).join('; ')})` : ''}; ${r.flags.length} event(s) not found`);
-  add(`Every sound within ±${cfg.qa.syncFrames} frame of its frame, measured on the master`, qa.syncOk, `worst ${f2(qa.worstFrameError)} frames over ${qa.syncRows.length} sounds; each hit located in the master audio by cross-correlation (see Cues), frames checked on sync_check.jpg`);
+  add(`Every sound within ±${cfg.qa.syncFrames} frame of its frame, measured on the master`, qa.syncOk, `worst ${f2(qa.worstFrameError)} frames over ${qa.syncRows.length} sounds; each sound located in the master by cross-correlation against the premix (see Cues), frames checked on sync_check.jpg`);
   if (qa.hardStopAt != null) add(`Music silent after the hard stop (A4 below -60 dBFS from ${cfg.music.hardStop.event} + ${cfg.music.hardStop.fadeMs} ms)`, qa.musicStopOk, `stop at ${t3(qa.hardStopAt)} s; A4 peak afterwards ${qa.musicAfterDb === -Infinity || qa.musicAfterDb < -200 ? 'digital silence' : `${f2(qa.musicAfterDb)} dBFS`}`);
   if (qa.loudestSfx) add(`${qa.loudestSfx} is the loudest moment (momentary loudness, 400 ms)`, qa.loudestOk, `maximum M ${f2(qa.loudest.M)} LUFS at ${t3(qa.loudest.t)} s (window end); ${qa.loudestSfx} at ${r.hits.filter((h) => h.sfxName === qa.loudestSfx).map((h) => t3(h.timeline)).join(', ')} s`);
   if (cfg.firstEvent) add(`First sound (${cfg.firstEvent.event}) within the first ${cfg.firstEvent.seconds} s`, qa.firstEventOk, `${cfg.firstEvent.event} at ${t3(qa.firstEventAt)} s`);
@@ -64,7 +64,7 @@ export function writeReport(file, r) {
   L.push('');
 
   L.push('## Cues', '');
-  L.push('Times in timeline seconds. Picture = the event frame. Target = picture + offset (where the sound starts). Heard = the measured attack of the sound in the master (hits: the hit\'s own audio found in the master by cross-correlation; its attack is the first 5 ms within 10 dB of its loudest window). Reference = target for hard hits and voices, the event frame for soft sounds (onset trim) whose offset only compensates a slow attack. Error = heard - reference, in frames.', '');
+  L.push('Times in timeline seconds. Picture = the event frame. Target = picture + offset: where the sound must be heard to start. Effects are placed by their attack point (the first 5 ms window within 10 dB of the loudest window of the trimmed take), voices by their gated onset. Heard = where that point sits in the master: the take\'s first 80 ms are located in the master audio by cross-correlation (shift column) and the shift is added to the target. Error = heard - target, in frames. The frames themselves are verified by eye on sync_check.jpg, cut from the master.', '');
   L.push('| # | Scene | Sound | Event | Offset | Picture | Target | Heard | Error (frames) | Shift in master (ms) | Variant / file | Status | Notes |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   const order = [...cues].sort((a, b) => (a.timeline ?? 1e9) - (b.timeline ?? 1e9));
   for (const c of order) {
