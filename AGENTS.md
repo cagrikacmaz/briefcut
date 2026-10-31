@@ -1,7 +1,7 @@
 # AGENTS.md: operating manual for coding and browser agents
 
-Read this fully before running briefcut on a film. It is agent-neutral: any coding agent with a shell,
-and for the handoff path a browser agent in a real browser.
+Read this fully before running briefcut on a film. It is agent-neutral: any coding agent with a
+shell, and for the handoff path a browser agent in a real browser.
 
 ## What you are doing
 

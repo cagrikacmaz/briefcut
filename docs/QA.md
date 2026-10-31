@@ -7,11 +7,13 @@ and stays FAIL; the film is still exported so the owner can see what failed. Cod
 | Check | How it is measured |
 |---|---|
 | Duration | video stream duration of the master inside the brief's window, and frame count equal to the EDL total |
-| Loudness, true peak, clipping | EBU R128 (`ebur128=peak=true`) on the exported AAC, not the WAV; target ± tolerance, true peak at or under the ceiling; decoded sample peak under -0.1 dBFS with no full-scale samples |
+| Loudness, true peak, clipping | EBU R128 (`ebur128=peak=true`) on the exported AAC, not the WAV; target ± tolerance; true peak at or under the ceiling, where the true peak counts as at least the decoded sample peak (the meter prints 0.1 dB steps); decoded sample peak under -0.1 dBFS with no full-scale samples |
+| Extra loudness targets | the same rule for every file of a second loudness target (for example `_social` at -10 LUFS), each measured on its own export, with the limiter ceiling and loudnorm mode it needed |
 | Every event and cue placed or logged | every audio-map instance is placed or has a drop reason (cut-out region, missing event, after the end) |
 | Sync | each sound's position in the master: 200 ms of the premix from its start, located in the master by cross-correlation (±125 ms); error = heard - target in frames, within the brief's tolerance (±1 frame). Effects are placed by their attack point, voices by their gated onset |
 | Music hard stop | peak of the music stem after the stop event + fade, scaled by the mastering gain, under -60 dBFS |
 | Loudest moment | the maximum of momentary loudness (400 ms) falls on the named hit |
+| Ending energy | the lowest momentary loudness (400 ms windows wholly inside the last N s before the end card) is within X LU of the named hit's highest momentary value in its first 1.5 s; the report also lists the momentary values of the film's last 5 s |
 | Hook | the first event's timeline time within the brief's limit |
 | First and last frame | mean luma of the first frame above 20 (0-255); with an end card, the last frame is dark with bright text pixels |
 | No source audio | one audio stream in the master; the picture is rendered with `-an` and no clip audio is mapped |

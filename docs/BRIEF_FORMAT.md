@@ -3,7 +3,10 @@
 A brief is one markdown file in the film folder: `BRIEF.md`, or `<ID>_BRIEF.md` (the file with an
 EDL table; a scene-prompt file like `FLOW_BRIEF.md` is skipped). It is the single source of truth
 for the film. Correction passes go in `<ID>_FIX01.md`, `<ID>_FIX02.md` ...; each makes the next
-export a new version (`_v2`, `_v3`), and no master is overwritten. Decisions taken outside the
+export a new version (`_v2`, `_v3`), and no master is overwritten. Every `## <Section>` in a FIX
+file replaces the brief's section whose heading starts with the same words (`## Audio map`
+replaces `## Audio map (times are ...)`), or is appended when the brief has none; later passes win,
+and text outside a section is a note that changes nothing. The brief file itself stays as written. Decisions taken outside the
 brief go in `OVERRIDES.md` and are flagged on top of the report.
 
 Two complete examples: [`examples/hello-short/BRIEF.md`](../examples/hello-short/BRIEF.md)
@@ -91,17 +94,20 @@ is heard to start), and variants rotate so neighbouring hits differ.
 **`## Audio map`**:
 
 ```
-| Scene | Track | Voice | Text | At event | Offset |
-|---|---|---|---|---|---|
-| S1_HAMMER | A3 | sfx:hammer_tap | | tap_1, tap_2, tap_3 | 0.00 |
-| S2_GEARS | A3 | sfx:escapement | | step_* (every one) | 0.00 |
-| S4_MIDNIGHT | A2 | Narrator | `Right on the hour.` | midnight | 1.80 |
+| Scene | Track | Voice | Text | At event | Offset | Gain |
+|---|---|---|---|---|---|---|
+| S1_HAMMER | A3 | sfx:hammer_tap | | tap_1, tap_2, tap_3 | 0.00 | |
+| S2_GEARS | A3 | sfx:escapement | | step_* (every one) | 0.00 | |
+| S4_MIDNIGHT | A2 | Narrator | `Right on the hour.` | midnight | 1.50 | +3 |
+| END_CARD | A3 | sfx:escapement | | text_in | 0.00 | -4 |
 ```
 
 `Voice` is a voice role from `## ElevenLabs` or `sfx:<name>` from `## SFX`. `At event` takes one
 event, a list, a wildcard (`step_*`, every match in time order), `clip start` (the shot's first
 frame in the edit), or a number of seconds. Text in parentheses is ignored. `Offset` is added on
-the timeline. A row whose event falls in a cut-out region is dropped and logged.
+the timeline. The optional `Gain` column (dB) is added to the bus level for that row only. A row
+whose event falls in a cut-out region is dropped and logged. Scene `END_CARD` has two events of its
+own: `start` (its first frame) and `text_in` (the frame its text is fully faded in).
 
 Rule prose the parser reads: `The narrator never covers the strike's first 1.5 s` (no voice starts
 inside that window of the SFX whose name contains "strike"); `start it earlier ... extend the hold
@@ -120,15 +126,26 @@ held longer if the clip has frames, then it runs over).
 **`## Mix levels`**: `A2 narrator -6 dBFS peak. A3 SFX -9 dBFS peak (midnight_strike -4 dBFS peak).
 A4 music -21 dBFS RMS, ducked 4 dB under the narrator. A5 ambience -30 dBFS RMS.`
 
+Two optional sentences per effect, each on its own:
+`midnight_strike decay held to 1.2 dB/s from 0.5 s after its attack (lift at most 36 dB).` lifts the
+take's tail so its 50 ms envelope falls no faster than that rate (attack and peak untouched), and
+`midnight_strike ducked 4 dB under the narrator.` ducks that effect under the voice bus with the
+music duck's key and timing.
+
 **`## End card`**: length, font paths in backticks, lines as `` `text` (large) `` /
-`` `text` (small, 60% white) ``, `fades in over 0.25 s`.
+`` `text` (small, 60% white) `` / `` `text` (5.4% of the frame height, 60% white) ``,
+`fades in over 0.25 s`.
 
 **`## Export`**: master name (`` `out/NAME_master.mp4` ``), size, fps, `CRF 18`,
 `x264 preset slow`, `AAC 192k 48 kHz`, `loudnorm I=-14 TP=-1 LRA=11`, and optional
-`` `out/NAME_preview_360p.mp4` `` and `` `out/NAME_16x9.mp4` ``.
+`` `out/NAME_preview_360p.mp4` `` and `` `out/NAME_16x9.mp4` ``. A second loudness target is a
+line that names its own files and `I=`/`TP=`, for platforms that do not normalize:
+`` `out/NAME_social.mp4` and `out/NAME_16x9_social.mp4`: two-pass loudnorm I=-10 TP=-1 LRA=11 ``.
+Each is mastered from the same premix with its own limiter pass; a `16x9` name gets the 16:9 export.
 
-**`## QA`**: the duration window, `-14 LUFS ±0.5`, `within ±1 frame`, and
-`<sfx> is the loudest moment` become checks; see [QA.md](QA.md).
+**`## QA`**: the duration window, `-14 LUFS ±0.5`, `within ±1 frame`,
+`<sfx> is the loudest moment` and `The last 3 s before the end card stay within 8 LU of the <sfx>`
+become checks; every extra loudness target gets its own row. See [QA.md](QA.md).
 
 ## The cue sheet (`out/cues.md`)
 

@@ -6,7 +6,9 @@ First public shape of the pipeline I run in production, extracted into generic m
 
 - Brief parser: EDL, event detection, voices, SFX table (`Name | Prompt | Seconds | Variants | Trim`),
   audio map with event lists, wildcards (`step_*`) and `clip start`, music and ambience, mix
-  levels, end card, export, QA; presets (`default`, `kids-channel`); FIX passes and `OVERRIDES.md`.
+  levels, end card, export, QA; presets (`default`, `kids-channel`); FIX passes (each `##` section
+  replaces the brief's section of the same name) and `OVERRIDES.md`; a per-row `Gain` column; end-card
+  events (`start`, `text_in`) and line sizes as a share of the frame height.
 - Edit: frame-exact hard cuts, shot rules, beat snap that never breaks the minimum shot or moves a
   cue, end card, BT.709 conform, optional shot colour match and grade, 360p preview, 16:9 export on
   a blurred background.
@@ -14,13 +16,18 @@ First public shape of the pipeline I run in production, extracted into generic m
   transient trims, effects placed by their attack point, rotating SFX variants, voice rules (lead
   spacing, overlap control, caps that never cut words, protected windows, lines fitted to their
   shot), music take chosen by tempo steadiness, music hard stop, ambience, keyed ducking, two-pass
-  loudnorm with an oversampled limiter, export measured with the EBU R128 meter.
+  loudnorm with an oversampled limiter, export measured with the EBU R128 meter; a held decay for
+  ringing takes and effects ducked under the voices; a second loudness target per export (for
+  example -10 LUFS for platforms that do not normalize), each mastered from the same premix.
 - QA: duration, loudness and true peak on the export, cue placement, sync measured on the master,
   hard stop, loudest moment, hook, first and last frame, no source audio, hard cuts only, min shot,
-  cuts on the grid, silence holes; `sync_check.jpg`, `edl_sheet.jpg`, preview and 16:9 sheets.
+  cuts on the grid, silence holes, ending energy before the end card, one loudness row per extra
+  target; true peak counts the decoded sample peak; momentary loudness of the last 5 s in the
+  report; `sync_check.jpg`, `edl_sheet.jpg`, preview and 16:9 sheets.
 - Commands: `init`, `prompts`, `generate`, `ingest`, `sheets`, `strip`, `prepare`, `cut`, `run`,
   `estimate`, `regress`, `demo`.
 - Providers: ElevenLabs (live), local and mock audio; handoff (live), Higgsfield, Gemini API
   (gemini-omni-1.1-flash), fal (Seedance 2.0) and mock video.
-- Showcase film "Midnight" (`examples/midnight/`), docs, playbooks, 45 offline tests, CI on Linux,
-  Windows and macOS.
+- Showcase film "Midnight" (`examples/midnight/`), version 2 after one review pass (version 1 kept
+  in `examples/midnight/out/v1/`), docs, playbooks, 53 offline tests, CI on Linux, Windows and
+  macOS.

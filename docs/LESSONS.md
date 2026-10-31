@@ -411,6 +411,26 @@ Each of these became a QA row after a film shipped without it:
 - **Rule:** nothing on screen may model unsafe or wrong behaviour. Offending frames are not used (removed with a lossless cut when possible) and the decision is logged; the whole scene is checked at 8 fps.
 - **Check:** a per-film safety note in the character check.
 
+## Endings and delivery loudness
+
+### 67. The film went quiet before its end card
+- **Symptom:** after the last big hit the momentary loudness fell 35 LU in 4.5 s; the seconds before the end card sounded empty on a phone.
+- **Cause:** a generated bell take decays about 10 dB per second, the line after it was short, and the room tone sat 25 dB lower.
+- **Rule:** hold a ringing take's own decay (it may fall no faster than a set rate, with the lift capped) rather than adding new sounds; duck the held tail under the voice so the line stays clear; keep the room tone to the last frame.
+- **Check:** a QA row "the last N s before the end card stay within X LU of the hit", from the master's momentary loudness, and the momentary values of the last 5 s in the report.
+
+### 68. A printed true peak hid an overshoot
+- **Symptom:** the meter printed -1.0 dBTP, which passed, but the decoded export peaked at -0.97 dBFS.
+- **Cause:** the EBU R128 summary prints true peak to 0.1 dB; the true peak is never below the sample peak.
+- **Rule:** the true-peak rule also counts the sample peak of the decoded export.
+- **Check:** the loudness rows print both values; the mastering loop steps the limiter ceiling down until both are under the target.
+
+### 69. A loud master for social platforms overshot after encoding
+- **Symptom:** at -10 LUFS, a -3 dBTP limiter ceiling read -1.0 dBTP after AAC encoding, and -3.5 and -4 dBTP read about +1 dBTP.
+- **Cause:** hard limiting leaves dense peaks that the AAC encoder overshoots by 2 dB or more, and not in step with the ceiling.
+- **Rule:** master each loudness target separately from the same premix, step the ceiling down as far as -5 dBTP, and measure the exported file, never the WAV.
+- **Check:** one QA row per export with integrated loudness, true peak, sample peak, the ceiling used and the loudnorm mode.
+
 ---
 
 ## Defaults that came out of this
