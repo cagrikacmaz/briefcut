@@ -4,6 +4,13 @@ import fs from 'node:fs';
 import { t3, f2, writeJson, posix } from './util.mjs';
 import { pass } from './qa.mjs';
 
+// Audio cost as the provider bills it: credits when it counts credits, else estimated USD.
+export function audioCost(making) {
+  if (making.creditUnit == null) return `est. ${making.estUsd.toFixed(2)} USD`;
+  const n = (x) => x.toLocaleString('en-US');
+  return `${n(making.credits)} ${making.creditUnit}${making.auditionCredits ? ` for the film, ${n(making.auditionCredits)} for the voice audition` : ''}`;
+}
+
 const sgn = (x, d = 2) => (x == null || Number.isNaN(x) ? '-' : `${x >= 0 ? '+' : ''}${x.toFixed(d)}`);
 
 export function qaRows(r) {
@@ -32,7 +39,7 @@ export function qaRows(r) {
   add(`Min shot ${cfg.shotRules.minShot} s`, qa.minShotOk, `shortest shot ${t3(qa.shortest)} s`);
   if (qa.beatOk != null) add(`Cuts on the music grid (±${cfg.music.nudgeFrames} frames allowed)`, qa.beatOk, `worst cut ${f2(qa.worstCutMs)} ms from a beat (one frame = ${f2(1000 / cfg.fps)} ms)`);
   add(`No silence below ${cfg.qa.silenceFloorDb} dBFS longer than ${cfg.qa.maxSilence} s`, qa.silenceOk, qa.silences.length ? qa.silences.map((s) => `${t3(s.start)}-${t3(s.end)}`).join(', ') : 'none');
-  add('Making-of numbers', null, `takes used ${making.takesUsed}, rejected ${making.takesRejected}; ${making.provider} audio: ${making.characters} TTS characters, ${making.ttsGenerations} TTS, ${making.sfxGenerations} SFX, ${making.musicGenerations} music, ${making.ambienceGenerations} ambience generations in the cache (${making.generated.length} made this run, ${making.reused} reused); est. ${making.estUsd.toFixed(2)} USD; runtime ${f2(qa.runtime)} s`);
+  add('Making-of numbers', null, `takes used ${making.takesUsed}, rejected ${making.takesRejected}; ${making.provider} audio: ${making.characters} TTS characters, ${making.ttsGenerations} TTS, ${making.sfxGenerations} SFX, ${making.musicGenerations} music, ${making.ambienceGenerations} ambience generations in the cache (${making.generated.length} made this run, ${making.reused} reused); ${audioCost(making)}; runtime ${f2(qa.runtime)} s`);
   return rows;
 }
 
@@ -130,7 +137,7 @@ export function writeSummary(file, r) {
     `5. Flagged for the owner: ${r.flags.length ? `${r.flags.length} item(s) on top of REPORT.md (${Object.entries(r.built.missing).filter(([, l]) => l.length).map(([k, l]) => `${k} ${l.length} event(s) not found`).concat(r.flags.filter((x) => /OVERRIDES/.test(x)).length ? ['overrides'] : []).join('; ')})` : 'none'}.`,
     `6. Music: ${r.music ? `take ${r.music.pick.used} of ${r.music.pick.rows.length}, ${f2(r.grid.bpm)} BPM${r.stopAt != null ? `, hard stop at ${t3(r.stopAt)} s` : ''}` : 'none'}.`,
     `7. Voices: ${[...new Set(r.cues.filter((c) => c.voiceUsed).map((c) => `${c.voice} = ${c.voiceUsed}`))].join(', ') || 'none'}.`,
-    `8. Audio: ${making.characters} TTS characters, ${making.sfxGenerations} SFX, ${making.musicGenerations} music, ${making.ambienceGenerations} ambience generations (${making.generated.length} new this run), est. ${making.estUsd.toFixed(2)} USD.`,
+    `8. Audio: ${making.characters} TTS characters, ${making.sfxGenerations} SFX, ${making.musicGenerations} music, ${making.ambienceGenerations} ambience generations (${making.generated.length} new this run), ${audioCost(making)}.`,
     `9. QA: ${failed.length ? `FAIL on ${failed.map((x) => x.check).join('; ')}` : `all ${rows.length} checks pass`}.`,
     `10. Decisions: ${r.log.assumptions.length} logged in OPEN_QUESTIONS.md (${[...new Set(r.log.assumptions.map((a) => a.topic))].join(', ') || 'none'}); runtime ${f2(qa.runtime)} s.`,
     '',

@@ -132,7 +132,7 @@ async function main() {
     const provider = audioProvider(flags.mock ? 'mock' : cfg.tts.provider, { filmDir, log });
     const vp = cfg.scenes.length ? videoProvider(cfg.video.provider, { filmDir, log, cfg }) : null;
     const r = await estimateFilm({ cfg, filmDir, provider, videoProvider: vp, log });
-    console.log(`out/COST.md: ${r.rows.length} requests, ${r.rows.filter((x) => !x.cached).length} to generate, about ${r.total.toFixed(2)} USD`);
+    console.log(`out/COST.md: ${r.rows.length} requests, ${r.rows.filter((x) => !x.cached).length} to generate, about ${r.unit ? `${Math.round(r.credits).toLocaleString('en-US')} ${r.unit}` : `${r.total.toFixed(2)} USD`}`);
   } else if (cmd === 'prepare' || cmd === 'run') {
     const provider = audioProvider(flags.mock ? 'mock' : cfg.tts.provider, { filmDir, log });
     const est = await estimateFilm({ cfg, filmDir, provider, log });

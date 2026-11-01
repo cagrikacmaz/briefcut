@@ -471,6 +471,13 @@ export async function cutFilm(opts) {
     estUsd: Object.values(cache.index).reduce((n, m) => n + (m.estUsd || 0), 0),
     provider: provider.name,
   };
+  // A provider that bills in credits is reported in credits, from each cached request at today's
+  // rates; voice audition takes (listed in audio/audition_*.json) are counted apart from the film.
+  if (provider.credits && provider.creditUnit) {
+    const auditioned = new Set(fs.readdirSync(audioDir).filter((f) => /^audition_.+\.json$/.test(f)).flatMap((f) => (readJson(path.join(audioDir, f))?.rows || []).map((r) => r.file)));
+    const credits = (pick) => Math.round(Object.entries(cache.index).filter(([k, m]) => m.request && pick(k)).reduce((n, [, m]) => n + provider.credits(m.request), 0));
+    Object.assign(making, { creditUnit: provider.creditUnit, credits: credits((k) => !auditioned.has(k)), auditionCredits: credits((k) => auditioned.has(k)) });
+  }
 
   const r = { cfg, entries, cues, hits, items, qa, loud, master, grid, music, mixRes, log, flags, making, built, briefName: path.basename(briefFile), fixes: brief.fixes, version, card, clips, filmDir, outDir, stopAt, cardFrom };
   writeReport(path.join(outDir, 'REPORT.md'), r);

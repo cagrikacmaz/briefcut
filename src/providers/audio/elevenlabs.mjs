@@ -18,7 +18,8 @@ export const PRICING = { usdPerCredit: 0.0002, ttsCreditsPerChar: 1, sfxCreditsP
 export class ElevenLabsProvider {
   constructor({ filmDir, log, fetchImpl = globalThis.fetch, key = null, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
     this.name = 'elevenlabs';
-    this.billing = 'prepaid credits / USD per plan';
+    this.billing = 'prepaid credits';
+    this.creditUnit = 'ElevenLabs credits';
     this.filmDir = filmDir;
     this.log = log;
     this.fetch = fetchImpl;

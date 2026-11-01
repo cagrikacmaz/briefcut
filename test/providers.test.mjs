@@ -169,3 +169,15 @@ test('every provider has the interface', () => {
     for (const m of ['resolveVoice', 'tts', 'sfx', 'music', 'align', 'usage', 'price']) assert.equal(typeof p[m], 'function', `${p.name}.${m}`);
   }
 });
+
+test('ElevenLabs costs are stated in credits, audition apart from the film', async () => {
+  const { audioCost } = await import('../src/core/report.mjs');
+  const el = new ElevenLabsProvider({ key: FAKE_KEY, fetchImpl: fakeFetch([]), log: nullLog() });
+  assert.equal(el.creditUnit, 'ElevenLabs credits');
+  assert.equal(el.credits({ kind: 'tts', text: 'Right on the hour.' }), 18);
+  assert.equal(el.credits({ kind: 'sfx', seconds: 0.4 }), 20); // half-second minimum
+  assert.equal(Math.round(el.credits({ kind: 'music', seconds: 20 })), 300);
+  assert.equal(audioCost({ creditUnit: el.creditUnit, credits: 2174, auditionCredits: 72 }), '2,174 ElevenLabs credits for the film, 72 for the voice audition');
+  assert.equal(audioCost({ creditUnit: el.creditUnit, credits: 2174, auditionCredits: 0 }), '2,174 ElevenLabs credits');
+  assert.equal(audioCost({ estUsd: 0 }), 'est. 0.00 USD');
+});

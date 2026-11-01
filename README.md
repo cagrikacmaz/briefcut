@@ -312,7 +312,7 @@ cause, rule and check. Five of them:
 npm test
 ```
 
-61 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
+62 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
 beat snap, voice rules, onset and transient trims, loudness math, wildcard events, the music hard
 stop, held decay, effect and speech-band ducking, voice audition, stills as held shots, song-block bit identity, provider
 contracts, a golden demo render (every sound within ±1 frame of its known flash, the master at

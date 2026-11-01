@@ -11,7 +11,7 @@ with no network (`test/providers.test.mjs`). "Live" means a real film was produc
 
 | Provider | Kind | What it does in briefcut | Billing | Status |
 |---|---|---|---|---|
-| `elevenlabs` | audio | TTS, sound effects, music, forced alignment, speech-to-text, voice design | prepaid plan (credits / USD) | **live** (Midnight) + contract tested |
+| `elevenlabs` | audio | TTS, sound effects, music, forced alignment, speech-to-text, voice design | prepaid plan (credits) | **live** (Midnight) + contract tested |
 | `local` | audio | your own files in `<film>/audio/local/` | free | contract tested (interface) |
 | `mock` | audio | deterministic tones with 0.3 s leading silence | free | used by the demo and the golden test |
 | `handoff` | video | writes `flow_brief.md` for a web tool without an API (Google Flow and similar); `briefcut ingest` takes the downloads | the tool's own credits | **live** (Midnight, with a browser agent) |
@@ -50,8 +50,10 @@ Every request has a hard timeout over the whole response (music 240 s, else 60 s
 errors and timeouts are retried twice (2 s, 4 s), 429 and 5xx up to four times.
 
 Pricing used by the estimator (pricing pages, 2026-10-31): multilingual v2 1 credit per character;
-sound effects 40 credits per second with a duration (200 per generation without); music 900
-credits per minute; about 0.0002 USD per credit on the smallest paid plan, so estimates err high.
+sound effects 40 credits per second with a duration, at least half a second (200 per generation
+without); music 900 credits per minute. `out/COST.md` and the report state ElevenLabs credits,
+voice auditions apart from the film. `--max-spend` is in USD, at about 0.0002 USD per credit on
+the smallest paid plan, so it errs on the safe side.
 The API price page also quotes 0.08 USD per 1,000 TTS characters for v2, v3 and v4. Not
 published: forced alignment and voice design prices (estimated as 0). `eleven_v4` is the current
 flagship TTS model; `eleven_v3` and `eleven_multilingual_v2` remain available.
