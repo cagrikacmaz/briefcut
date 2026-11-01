@@ -101,3 +101,18 @@ test('only .env.example is allowed among env files', () => {
   walk(ROOT);
   assert.deepEqual(envs, []);
 });
+
+// Images and videos carry metadata: generator text chunks, EXIF, C2PA provenance manifests.
+test('no brand or provenance metadata in images and videos', () => {
+  const MEDIA = /\.(png|jpe?g|gif|webp|tiff?|mp4|mov)$/i;
+  const r = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: ROOT, encoding: 'utf8' });
+  const list = r.status === 0 ? r.stdout.split('\0').filter((f) => MEDIA.test(f) && fs.existsSync(path.join(ROOT, f))) : [];
+  const hits = [];
+  for (const rel of list) {
+    // Metadata is readable text; compressed picture data matches short words by chance.
+    const text = (fs.readFileSync(path.join(ROOT, rel)).toString('latin1').match(/[\x20-\x7e]{8,}/g) || []).join('\n');
+    if (/c2pa|jumbf/i.test(text)) hits.push(`${rel}: provenance manifest`);
+    for (const re of BRANDS) if (re.test(text)) hits.push(`${rel}: ${re}`);
+  }
+  assert.deepEqual(hits, []);
+});

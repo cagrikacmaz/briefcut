@@ -35,5 +35,5 @@ First public shape of the pipeline I run in production, extracted into generic m
 - Providers: ElevenLabs (live), local and mock audio; handoff (live), Higgsfield, Gemini API
   (gemini-omni-1.1-flash), fal (Seedance 2.0) and mock video.
 - Showcase film "Midnight" (`examples/midnight/`), version 3 after two review passes (versions 1 and 2 kept
-  in `examples/midnight/out/v1/` and `out/v2/`), docs, playbooks, 60 offline tests, CI on Linux, Windows and
+  in `examples/midnight/out/v1/` and `out/v2/`), docs, playbooks, 61 offline tests, CI on Linux, Windows and
   macOS.

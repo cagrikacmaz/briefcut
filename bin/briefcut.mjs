@@ -70,8 +70,8 @@ const maxSpend = (flags) => (flags['max-spend'] != null ? Number(flags['max-spen
 
 async function main() {
   const { _: [cmd, ...pos], flags } = parseArgs(process.argv.slice(2));
-  if (!cmd || cmd === 'help' || flags.help) return console.log(HELP);
   if (cmd === 'version' || flags.version) return console.log(VERSION);
+  if (!cmd || cmd === 'help' || flags.help) return console.log(HELP);
   const need = (n) => {
     if (pos.length < n) throw new Error(`usage: see "briefcut help" (${cmd} needs ${n} argument${n > 1 ? 's' : ''})`);
   };

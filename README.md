@@ -1,15 +1,15 @@
+<img src="media/banner.png" width="100%" alt="briefcut">
+
 https://github.com/user-attachments/assets/5b25ed60-a413-474a-99e2-da2e01ded3ba
 
 <p align="center"><sub>Midnight, 15.5 s with sound, rendered by briefcut from four generated clips and a markdown brief. No player? <a href="media/midnight-preview.gif">Silent GIF of the last 7.75 s</a> or <a href="media/midnight-preview.mp4">the mp4</a>.</sub></p>
-
-# briefcut
 
 **Brief in, film out.** A markdown brief goes in; generated clips, voices, music and sound
 effects are assembled by deterministic code into a frame-synced, loudness-normalized film with a
 QA report. Coding and browser agents do the parts code can't: producing clips in a video tool,
 and looking at the pictures.
 
-[![npm](https://img.shields.io/npm/v/briefcut)](https://www.npmjs.com/package/briefcut) ![license: MIT](https://img.shields.io/badge/license-MIT-blue) ![node: 22+](https://img.shields.io/badge/node-22%2B-339933)
+[![release](https://img.shields.io/github/v/release/cagrikacmaz/briefcut)](https://github.com/cagrikacmaz/briefcut/releases/latest) ![license: MIT](https://img.shields.io/badge/license-MIT-blue) ![node: 22+](https://img.shields.io/badge/node-22%2B-339933)
 
 I designed this pipeline (the brief format, the edit, voice and sync rules, the QA checks and the
 agent workflow) and it has rendered every film of my kids' learning channel and several client
@@ -156,7 +156,7 @@ where the sound is; this sheet says the picture agrees.
 ## Quickstart (no key, under a minute)
 
 ```bash
-npx briefcut demo
+npx github:cagrikacmaz/briefcut demo
 ```
 
 Or from a clone:
@@ -312,12 +312,12 @@ cause, rule and check. Five of them:
 npm test
 ```
 
-60 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
+61 tests, offline, mock providers, no network: the brief parser and FIX passes, EDL frame math,
 beat snap, voice rules, onset and transient trims, loudness math, wildcard events, the music hard
 stop, held decay, effect and speech-band ducking, voice audition, stills as held shots, song-block bit identity, provider
 contracts, a golden demo render (every sound within ±1 frame of its known flash, the master at
 -14 ±0.5 LUFS and a social pair at -10 ±0.5 LUFS, true peak ≤ -1 dBTP), and a privacy scan for
-names, local paths, anything that looks like a key, and assistant or model brands. CI runs them on Linux, Windows and macOS.
+names, local paths, anything that looks like a key, and assistant or model brands, image and video metadata included. CI runs them on Linux, Windows and macOS.
 
 ## Acknowledgements
 
