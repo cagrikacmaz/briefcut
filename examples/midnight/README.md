@@ -44,9 +44,9 @@ Clips: Google Flow (Veo 3.1 Quality), generated and downloaded by a browser agen
 | Sounds within ±1 frame | 20 of 20, worst 0.00 | 16 of 16, worst 0.00 | 16 of 16, worst 0.00 |
 | Exports | master -14 LUFS, 16:9 | + social 9:16 and 16:9 at -10 LUFS | as v2 |
 
-The clips, the generated audio and the masters are not in git. The v3 masters
-(`MIDNIGHT_master_v3.mp4`, `MIDNIGHT_social_v3.mp4`, `MIDNIGHT_16x9_social_v3.mp4`) and the v2 and
-v1 masters are attached to the v0.1.0 release.
+The clips, the generated audio and the masters are not in git. The v3 masters are attached to the
+v0.1.0 release as `MIDNIGHT_master.mp4`, `MIDNIGHT_social.mp4` and `MIDNIGHT_16x9_social.mp4`
+(rendered as `MIDNIGHT_master_v3.mp4`, `MIDNIGHT_social_v3.mp4`, `MIDNIGHT_16x9_social_v3.mp4`).
 
 To re-render from your own copy of the clips and audio cache:
 
