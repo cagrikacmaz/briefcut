@@ -7,6 +7,6 @@
 5. Flagged for the owner: 2 item(s) on top of REPORT.md (S2 1 event(s) not found; overrides).
 6. Music: take 1 of 2, 120.00 BPM, hard stop at 9.500 s.
 7. Voices: Narrator = Adam Stone - Smooth, Deep, and Relaxed.
-8. Audio: 90 TTS characters, 12 SFX, 2 music, 1 ambience generations (0 new this run), est. 0.45 USD.
+8. Audio: 90 TTS characters, 12 SFX, 2 music, 1 ambience generations (0 new this run), 2,174 ElevenLabs credits for the film, 72 for the voice audition.
 9. QA: all 17 checks pass.
 10. Decisions: 6 logged in OPEN_QUESTIONS.md (override, clip audio, soft attack, loudness); runtime 55.23 s.

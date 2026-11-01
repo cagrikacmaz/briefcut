@@ -79,7 +79,7 @@ attached to the v0.1.0 release.
      clock's hands never meet at XII, so the strike lands on the hard cut to the dial, as the
      brief planned.
    - **Audio.** [`out/COST.md`](examples/midnight/out/COST.md) before any call: 16 requests,
-     about 0.43 USD (2,174 credits). ElevenLabs made 16 generations in 41 s: 1 narrator line
+     2,174 ElevenLabs credits. ElevenLabs made 16 generations in 41 s: 1 narrator line
      (18 characters, voice "George", the brief's first candidate), 12 sound-effect variants,
      2 music takes (take 1 kept: steadiest tempo, 120.00 BPM, local spread 0.04 BPM against 0.15)
      and 1 ambience bed. Every later render reused the cache; the first revision made no paid call.
@@ -106,7 +106,7 @@ attached to the v0.1.0 release.
    masters settled at a -4.5 dBTP limiter ceiling.
 5. **I reviewed v2 and asked for a deeper, clearer narrator** (v3, audio only, picture as v2):
    [`FIX02.md`](examples/midnight/FIX02.md). The narrator is chosen by audition: the line
-   generated with four voices (4 lines, 72 characters, about 0.01 USD), each measured for its
+   generated with four voices (4 lines, 72 characters, 72 ElevenLabs credits), each measured for its
    fundamental and spectral centroid; Adam is lowest on both (90.1 Hz, 1424 Hz), see
    [`out/AUDITION.md`](examples/midnight/out/AUDITION.md). The line is at -3 dBFS peak with a +2 dB
    low shelf at 150 Hz, and the strike is ducked 6 dB under it (150 ms attack, 600 ms release).

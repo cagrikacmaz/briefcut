@@ -24,7 +24,7 @@ Generated 2026-10-31T14:46:13.910Z by briefcut from `MIDNIGHT_BRIEF.md` (preset 
 | 11 | Min shot 2 s | PASS | shortest shot 3.000 s |
 | 12 | Cuts on the music grid (±3 frames allowed) | PASS | worst cut 0.16 ms from a beat (one frame = 41.67 ms) |
 | 13 | No silence below -50 dBFS longer than 1.5 s | PASS | none |
-| 14 | Making-of numbers | n/a | takes used 4, rejected 3; elevenlabs audio: 18 TTS characters, 1 TTS, 12 SFX, 2 music, 1 ambience generations in the cache (0 made this run, 16 reused); est. 0.43 USD; runtime 49.05 s |
+| 14 | Making-of numbers | n/a | takes used 4, rejected 3; elevenlabs audio: 18 TTS characters, 1 TTS, 12 SFX, 2 music, 1 ambience generations in the cache (0 made this run, 16 reused); 2,174 ElevenLabs credits; runtime 49.05 s |
 
 ## Edit decision list (as rendered)
 

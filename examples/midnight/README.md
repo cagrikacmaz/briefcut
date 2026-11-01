@@ -22,7 +22,7 @@ Clips: Google Flow (Veo 3.1 Quality), generated and downloaded by a browser agen
 | [`OVERRIDES.md`](OVERRIDES.md) | the one decision taken outside the brief (seven taps, not three) |
 | [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) | every decision, by the agent (v1, v2, v3) and by briefcut |
 | [`out/AUDITION.md`](out/AUDITION.md) | the v3 narrator audition: four voices, fundamental and spectral centroid |
-| [`out/COST.md`](out/COST.md) | the estimate written before the v3 paid calls (4 audition lines, about 0.01 USD) |
+| [`out/COST.md`](out/COST.md) | the estimate written before the v3 paid calls (4 audition lines, 72 ElevenLabs credits) |
 | [`out/REPORT.md`](out/REPORT.md), [`out/SUMMARY.md`](out/SUMMARY.md) | v3: QA, edit, events, cues with frame error, mix, momentary loudness of the last 5 s, decisions |
 | [`out/sync_check.jpg`](out/sync_check.jpg) | each sound's frame from the master, with 1/8 s either side (unchanged since v2) |
 | [`out/edl_sheet.jpg`](out/edl_sheet.jpg), [`out/preview_sheet.jpg`](out/preview_sheet.jpg), [`out/wide_sheet.jpg`](out/wide_sheet.jpg) | the edit, the preview at 2 fps, the 16:9 export at 1 fps |
