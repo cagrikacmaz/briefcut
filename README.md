@@ -9,7 +9,7 @@ effects are assembled by deterministic code into a frame-synced, loudness-normal
 QA report. Coding and browser agents do the parts code can't: producing clips in a video tool,
 and looking at the pictures.
 
-[![release](https://img.shields.io/github/v/release/cagrikacmaz/briefcut)](https://github.com/cagrikacmaz/briefcut/releases/latest) ![license: MIT](https://img.shields.io/badge/license-MIT-blue) ![node: 22+](https://img.shields.io/badge/node-22%2B-339933)
+[![release](https://img.shields.io/github/v/release/cagrikacmaz/briefcut)](https://github.com/cagrikacmaz/briefcut/releases/latest) [![npm](https://img.shields.io/npm/v/briefcut)](https://www.npmjs.com/package/briefcut) ![license: MIT](https://img.shields.io/badge/license-MIT-blue) ![node: 22+](https://img.shields.io/badge/node-22%2B-339933)
 
 I designed this pipeline (the brief format, the edit, voice and sync rules, the QA checks and the
 agent workflow) and it has rendered every film of my kids' learning channel and several client
@@ -156,7 +156,7 @@ where the sound is; this sheet says the picture agrees.
 ## Quickstart (no key, under a minute)
 
 ```bash
-npx github:cagrikacmaz/briefcut demo
+npx briefcut demo
 ```
 
 Or from a clone:
@@ -164,6 +164,8 @@ Or from a clone:
 ```bash
 git clone https://github.com/cagrikacmaz/briefcut && cd briefcut && node bin/briefcut.mjs demo
 ```
+
+Latest main, with unreleased changes: `npx github:cagrikacmaz/briefcut demo`.
 
 The demo renders [`examples/hello-short`](examples/hello-short/BRIEF.md) with mock providers:
 test-pattern clips that flash white on known frames, tones with 0.3 s of leading silence, a click
@@ -199,6 +201,12 @@ upscaled or retimed. Camera audio is not used: the mix is built from the brief's
 music and ambience.
 
 ## Make your own film
+
+Install the `briefcut` command once:
+
+```bash
+npm install -g briefcut
+```
 
 ```bash
 briefcut init my-film          # BRIEF.md template, clips/, out/, .env.example

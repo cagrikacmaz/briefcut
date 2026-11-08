@@ -39,3 +39,4 @@ First public shape of the pipeline I run in production, extracted into generic m
 - Showcase film "Midnight" (`examples/midnight/`), version 3 after two review passes (versions 1 and 2 kept
   in `examples/midnight/out/v1/` and `out/v2/`), docs, playbooks, 62 offline tests, CI on Linux, Windows and
   macOS.
+- Published on npm as `briefcut`: `npx briefcut demo`, or `npm install -g briefcut`.
